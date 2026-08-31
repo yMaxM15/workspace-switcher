@@ -31,11 +31,28 @@ public class WindowManager
         "StartMenuExperienceHost",
         "SearchHost",
         "LockApp",
-        "SystemSettings"
+        "SystemSettings",
+        "WorkspaceSwitcher",
+        "WorkspaceSwitcher.UI",
+        "WorkspaceSwitcher.Cli"
     };
+
+    static WindowManager()
+    {
+        try
+        {
+            // Enable Per-Monitor V2 DPI awareness so multi-monitor coordinates are never virtualized
+            NativeMethods.SetProcessDpiAwarenessContext(NativeMethods.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+        }
+        catch
+        {
+            // Fallback for older Windows builds
+        }
+    }
 
     /// <summary>
     /// Captures a snapshot of all currently active and visible application windows.
+    /// Excludes the switcher application itself, desktop shells, and background services.
     /// </summary>
     public WorkspaceProfile CaptureWorkspace(string profileName, string? description = null)
     {
@@ -46,15 +63,16 @@ public class WindowManager
         };
 
         var shellHwnd = NativeMethods.GetShellWindow();
+        int currentPid = Environment.ProcessId;
 
         NativeMethods.EnumWindows((hWnd, _) =>
         {
-            if (!IsValidAppWindow(hWnd, shellHwnd))
+            if (!IsValidAppWindow(hWnd, shellHwnd, currentPid))
             {
                 return true; // Continue enumeration
             }
 
-            var windowInfo = ExtractWindowInfo(hWnd);
+            var windowInfo = ExtractWindowInfo(hWnd, currentPid);
             if (windowInfo != null)
             {
                 profile.Windows.Add(windowInfo);
@@ -67,11 +85,8 @@ public class WindowManager
     }
 
     /// <summary>
-    /// Restores a given workspace profile by repositioning matching windows.
+    /// Restores a given workspace profile by repositioning matching windows across monitors.
     /// </summary>
-    /// <param name="profile">The profile to restore.</param>
-    /// <param name="launchIfNotRunning">If true, launches executable paths for apps that are not currently running.</param>
-    /// <returns>Count of successfully repositioned windows.</returns>
     public int RestoreWorkspace(WorkspaceProfile profile, bool launchIfNotRunning = false)
     {
         if (profile == null || profile.Windows == null || profile.Windows.Count == 0)
@@ -79,41 +94,22 @@ public class WindowManager
             return 0;
         }
 
-        // 1. Collect currently open candidate windows
         var currentWindows = GetCurrentOpenWindows();
         var matchedHandles = new HashSet<IntPtr>();
         var restoredCount = 0;
 
         foreach (var savedWindow in profile.Windows)
         {
-            // Try to find matching open window
             var target = FindBestMatch(savedWindow, currentWindows, matchedHandles);
 
             if (target != null)
             {
                 matchedHandles.Add(target.Handle);
 
-                var nativePlacement = savedWindow.Placement.ToNative();
-
-                // Apply placement
-                bool success = NativeMethods.SetWindowPlacement(target.Handle, ref nativePlacement);
-
-                if (!success)
+                if (MoveWindowToPlacement(target.Handle, savedWindow.Placement))
                 {
-                    // Fallback to SetWindowPos if SetWindowPlacement fails
-                    var rect = savedWindow.Placement.NormalPosition;
-                    NativeMethods.SetWindowPos(
-                        target.Handle,
-                        IntPtr.Zero,
-                        rect.Left,
-                        rect.Top,
-                        rect.Width,
-                        rect.Height,
-                        NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_NOZORDER | NativeMethods.SWP_SHOWWINDOW
-                    );
+                    restoredCount++;
                 }
-
-                restoredCount++;
             }
             else if (launchIfNotRunning && !string.IsNullOrWhiteSpace(savedWindow.ExecutablePath) && File.Exists(savedWindow.ExecutablePath))
             {
@@ -127,12 +123,64 @@ public class WindowManager
                 }
                 catch
                 {
-                    // Ignore launch failures for restricted/UWP apps
+                    // Ignore launch failures
                 }
             }
         }
 
         return restoredCount;
+    }
+
+    /// <summary>
+    /// Repositions and resizes a window to the target placement across single- and multi-monitor setups.
+    /// Safely handles un-maximizing before cross-monitor translation.
+    /// </summary>
+    public static bool MoveWindowToPlacement(IntPtr hWnd, WindowPlacementInfo placement)
+    {
+        if (hWnd == IntPtr.Zero) return false;
+
+        var normal = placement.NormalPosition;
+
+        // 1. Check current window state
+        var currentWp = NativeMethods.WINDOWPLACEMENT.Create();
+        NativeMethods.GetWindowPlacement(hWnd, ref currentWp);
+
+        // 2. If currently maximized or minimized, restore first so Windows permits moving across monitors
+        if (currentWp.showCmd == NativeMethods.SW_SHOWMAXIMIZED || currentWp.showCmd == NativeMethods.SW_SHOWMINIMIZED)
+        {
+            NativeMethods.ShowWindow(hWnd, NativeMethods.SW_RESTORE);
+        }
+
+        // 3. Move and size window to exact normal coordinates on the target monitor
+        NativeMethods.SetWindowPos(
+            hWnd,
+            IntPtr.Zero,
+            normal.Left,
+            normal.Top,
+            normal.Width,
+            normal.Height,
+            NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_NOZORDER | 0x0020 | NativeMethods.SWP_SHOWWINDOW
+        );
+
+        // 4. Apply placement memory
+        var nativePlacement = placement.ToNative();
+        NativeMethods.SetWindowPlacement(hWnd, ref nativePlacement);
+
+        // 5. Apply target final state (Maximized, Minimized, Normal)
+        if (placement.State == WindowState.Maximized)
+        {
+            NativeMethods.ShowWindow(hWnd, NativeMethods.SW_SHOWMAXIMIZED);
+        }
+        else if (placement.State == WindowState.Minimized)
+        {
+            NativeMethods.ShowWindow(hWnd, NativeMethods.SW_SHOWMINIMIZED);
+        }
+        else
+        {
+            NativeMethods.ShowWindow(hWnd, NativeMethods.SW_SHOWNORMAL);
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -142,12 +190,13 @@ public class WindowManager
     {
         var list = new List<WindowInfo>();
         var shellHwnd = NativeMethods.GetShellWindow();
+        int currentPid = Environment.ProcessId;
 
         NativeMethods.EnumWindows((hWnd, _) =>
         {
-            if (IsValidAppWindow(hWnd, shellHwnd))
+            if (IsValidAppWindow(hWnd, shellHwnd, currentPid))
             {
-                var info = ExtractWindowInfo(hWnd);
+                var info = ExtractWindowInfo(hWnd, currentPid);
                 if (info != null)
                 {
                     list.Add(info);
@@ -161,9 +210,8 @@ public class WindowManager
 
     /// <summary>
     /// Evaluates whether a window is an actual top-level user application window.
-    /// Filters out desktop, taskbars, cloaked UWP apps, invisible popups, and tool windows.
     /// </summary>
-    public static bool IsValidAppWindow(IntPtr hWnd, IntPtr shellHwnd)
+    public static bool IsValidAppWindow(IntPtr hWnd, IntPtr shellHwnd, int currentPid = 0)
     {
         if (hWnd == IntPtr.Zero || hWnd == shellHwnd)
             return false;
@@ -171,7 +219,15 @@ public class WindowManager
         if (!NativeMethods.IsWindowVisible(hWnd))
             return false;
 
-        // Filter out cloaked windows (e.g. suspended UWP apps or windows on other virtual desktops)
+        // Exclude our own application process
+        if (currentPid != 0)
+        {
+            NativeMethods.GetWindowThreadProcessId(hWnd, out uint windowPid);
+            if (windowPid == currentPid)
+                return false;
+        }
+
+        // Filter out cloaked windows (suspended UWP apps or windows on other virtual desktops)
         int cloakedVal = 0;
         int hr = NativeMethods.DwmGetWindowAttribute(hWnd, NativeMethods.DWMWA_CLOAKED, out cloakedVal, sizeof(int));
         if (hr == 0 && cloakedVal != 0)
@@ -200,20 +256,36 @@ public class WindowManager
         if (IgnoredClasses.Contains(className))
             return false;
 
-        // Filter by Window Dimensions (ignore 0-sized helper windows)
-        if (NativeMethods.GetWindowRect(hWnd, out var rect))
-        {
-            if (rect.Width <= 0 || rect.Height <= 0)
-                return false;
-        }
-
         return true;
     }
 
-    private WindowInfo? ExtractWindowInfo(IntPtr hWnd)
+    private WindowInfo? ExtractWindowInfo(IntPtr hWnd, int currentPid)
     {
         try
         {
+            // Process & PID
+            NativeMethods.GetWindowThreadProcessId(hWnd, out uint processId);
+            if (processId == 0 || processId == currentPid)
+                return null;
+
+            string processName = string.Empty;
+            string? exePath = null;
+
+            try
+            {
+                using var proc = Process.GetProcessById((int)processId);
+                processName = proc.ProcessName;
+
+                if (IgnoredProcesses.Contains(processName))
+                    return null;
+
+                exePath = GetProcessExecutablePath(processId, proc);
+            }
+            catch
+            {
+                return null;
+            }
+
             // Title
             var titleSb = new StringBuilder(512);
             NativeMethods.GetWindowText(hWnd, titleSb, titleSb.Capacity);
@@ -224,29 +296,6 @@ public class WindowManager
             NativeMethods.GetClassName(hWnd, classSb, classSb.Capacity);
             string className = classSb.ToString();
 
-            // Process & Executable Path
-            NativeMethods.GetWindowThreadProcessId(hWnd, out uint processId);
-            string processName = string.Empty;
-            string? exePath = null;
-
-            if (processId != 0)
-            {
-                try
-                {
-                    using var proc = Process.GetProcessById((int)processId);
-                    processName = proc.ProcessName;
-
-                    if (IgnoredProcesses.Contains(processName))
-                        return null;
-
-                    exePath = GetProcessExecutablePath(processId, proc);
-                }
-                catch
-                {
-                    // In case process terminated or access is denied
-                }
-            }
-
             // Window Placement
             var wp = NativeMethods.WINDOWPLACEMENT.Create();
             if (!NativeMethods.GetWindowPlacement(hWnd, ref wp))
@@ -254,8 +303,24 @@ public class WindowManager
                 return null;
             }
 
-            // Window Rect
-            NativeMethods.GetWindowRect(hWnd, out var rect);
+            var placementInfo = WindowPlacementInfo.FromNative(wp);
+
+            // Bounding Rect: If minimized, use normalPosition instead of -32000
+            WindowRect bounds;
+            if (placementInfo.State == WindowState.Minimized)
+            {
+                bounds = new WindowRect(
+                    placementInfo.NormalPosition.Left,
+                    placementInfo.NormalPosition.Top,
+                    placementInfo.NormalPosition.Right,
+                    placementInfo.NormalPosition.Bottom
+                );
+            }
+            else
+            {
+                NativeMethods.GetWindowRect(hWnd, out var rect);
+                bounds = WindowRect.FromNative(rect);
+            }
 
             return new WindowInfo
             {
@@ -265,8 +330,8 @@ public class WindowManager
                 ExecutablePath = exePath,
                 WindowTitle = title,
                 ClassName = className,
-                Placement = WindowPlacementInfo.FromNative(wp),
-                Bounds = WindowRect.FromNative(rect)
+                Placement = placementInfo,
+                Bounds = bounds
             };
         }
         catch
@@ -277,7 +342,6 @@ public class WindowManager
 
     private static string? GetProcessExecutablePath(uint processId, Process proc)
     {
-        // Try QueryFullProcessImageName (bypasses 32/64 bit mismatch issues)
         IntPtr hProcess = NativeMethods.OpenProcess(NativeMethods.PROCESS_QUERY_LIMITED_INFORMATION, false, processId);
         if (hProcess != IntPtr.Zero)
         {
@@ -296,7 +360,6 @@ public class WindowManager
             }
         }
 
-        // Fallback to Process.MainModule
         try
         {
             return proc.MainModule?.FileName;
@@ -329,15 +392,14 @@ public class WindowManager
 
         if (match != null) return match;
 
-        // 3. Partial Match: ProcessName + WindowTitle starts with / contains
+        // 3. Partial Match: ProcessName + ClassName
         match = candidates.FirstOrDefault(w =>
             string.Equals(w.ProcessName, savedWindow.ProcessName, StringComparison.OrdinalIgnoreCase) &&
-            (w.WindowTitle.Contains(savedWindow.WindowTitle, StringComparison.OrdinalIgnoreCase) ||
-             savedWindow.WindowTitle.Contains(w.WindowTitle, StringComparison.OrdinalIgnoreCase)));
+            string.Equals(w.ClassName, savedWindow.ClassName, StringComparison.OrdinalIgnoreCase));
 
         if (match != null) return match;
 
-        // 4. Fallback: First available window of the same process
+        // 4. Fallback: First available window of the same process name
         match = candidates.FirstOrDefault(w =>
             string.Equals(w.ProcessName, savedWindow.ProcessName, StringComparison.OrdinalIgnoreCase));
 
