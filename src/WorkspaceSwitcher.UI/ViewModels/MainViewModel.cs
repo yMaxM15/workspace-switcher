@@ -21,9 +21,17 @@ public class MainViewModel : INotifyPropertyChanged
     private ProfileItemViewModel? _selectedProfile;
     private string _newProfileName = string.Empty;
     private string _newProfileDescription = string.Empty;
+    private string _selectedNewIcon = "💻";
     private string _statusMessage = "Workspace Switcher is running in the background";
     private bool _autoLaunchMissingApps;
     private bool _minimizeToTrayOnClose;
+
+    // Workspace Editing State
+    private bool _isEditingWorkspace;
+    private ProfileItemViewModel? _editingProfile;
+    private string _editWorkspaceName = string.Empty;
+    private string _editWorkspaceDescription = string.Empty;
+    private string _editWorkspaceIcon = "💻";
 
     public ObservableCollection<ProfileItemViewModel> Profiles { get; } = new();
 
@@ -62,8 +70,6 @@ public class MainViewModel : INotifyPropertyChanged
             OnPropertyChanged();
         }
     }
-
-    private string _selectedNewIcon = "💻";
 
     public string SelectedNewIcon
     {
@@ -111,15 +117,60 @@ public class MainViewModel : INotifyPropertyChanged
 
     public int TotalProfilesCount => Profiles.Count;
 
+    // Editing Properties
+    public bool IsEditingWorkspace
+    {
+        get => _isEditingWorkspace;
+        set
+        {
+            _isEditingWorkspace = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string EditWorkspaceName
+    {
+        get => _editWorkspaceName;
+        set
+        {
+            _editWorkspaceName = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string EditWorkspaceDescription
+    {
+        get => _editWorkspaceDescription;
+        set
+        {
+            _editWorkspaceDescription = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string EditWorkspaceIcon
+    {
+        get => _editWorkspaceIcon;
+        set
+        {
+            _editWorkspaceIcon = value;
+            OnPropertyChanged();
+        }
+    }
+
     public IProfileService ProfileService => _profileService;
     public WindowManager WindowManager => _windowManager;
 
     // Commands
     public ICommand CaptureNewProfileCommand { get; }
+    public ICommand PrepareNewWorkspaceCommand { get; }
     public ICommand ApplyProfileCommand { get; }
     public ICommand OverwriteProfileCommand { get; }
     public ICommand DeleteProfileCommand { get; }
     public ICommand RefreshProfilesCommand { get; }
+    public ICommand StartEditProfileCommand { get; }
+    public ICommand SaveEditProfileCommand { get; }
+    public ICommand CancelEditProfileCommand { get; }
 
     public MainViewModel(
         WindowManager windowManager,
@@ -137,10 +188,15 @@ public class MainViewModel : INotifyPropertyChanged
         _minimizeToTrayOnClose = settings.MinimizeToTrayOnClose;
 
         CaptureNewProfileCommand = new RelayCommand(CaptureNewProfile, () => !string.IsNullOrWhiteSpace(NewProfileName));
+        PrepareNewWorkspaceCommand = new RelayCommand(PrepareNewWorkspace);
         ApplyProfileCommand = new RelayCommand<ProfileItemViewModel>(ApplyProfile);
         OverwriteProfileCommand = new RelayCommand<ProfileItemViewModel>(OverwriteProfile);
         DeleteProfileCommand = new RelayCommand<ProfileItemViewModel>(DeleteProfile);
         RefreshProfilesCommand = new RelayCommand(LoadProfiles);
+
+        StartEditProfileCommand = new RelayCommand<ProfileItemViewModel>(StartEditProfile);
+        SaveEditProfileCommand = new RelayCommand(SaveEditProfile, () => !string.IsNullOrWhiteSpace(EditWorkspaceName));
+        CancelEditProfileCommand = new RelayCommand(() => IsEditingWorkspace = false);
 
         _hotkeyManager.HotKeyPressed += OnHotKeyPressed;
 
@@ -166,6 +222,15 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    public void PrepareNewWorkspace()
+    {
+        NewProfileName = string.Empty;
+        NewProfileDescription = string.Empty;
+        SelectedNewIcon = "💻";
+        IsEditingWorkspace = false;
+        StatusMessage = "Enter workspace details and click 'Capture Current Windows'.";
+    }
+
     public void CaptureNewProfile()
     {
         if (string.IsNullOrWhiteSpace(NewProfileName)) return;
@@ -181,12 +246,60 @@ public class MainViewModel : INotifyPropertyChanged
 
             LoadProfiles();
             SelectedProfile = Profiles.FirstOrDefault(p => p.Name.Equals(profile.Name, StringComparison.OrdinalIgnoreCase));
+            RegisterDefaultHotkeys();
 
-            StatusMessage = $"Snapshot '{profile.Name}' created with {profile.Windows.Count} window(s)!";
+            StatusMessage = $"Workspace '{profile.Name}' created with {profile.Windows.Count} window(s)!";
         }
         catch (Exception ex)
         {
             StatusMessage = $"Error capturing profile: {ex.Message}";
+        }
+    }
+
+    public void StartEditProfile(ProfileItemViewModel? item)
+    {
+        var target = item ?? SelectedProfile;
+        if (target == null) return;
+
+        _editingProfile = target;
+        EditWorkspaceName = target.Name;
+        EditWorkspaceDescription = target.Description;
+        EditWorkspaceIcon = target.IconGlyph;
+        IsEditingWorkspace = true;
+        StatusMessage = $"Editing workspace '{target.Name}'...";
+    }
+
+    public void SaveEditProfile()
+    {
+        if (_editingProfile == null || string.IsNullOrWhiteSpace(EditWorkspaceName)) return;
+
+        try
+        {
+            string oldName = _editingProfile.Name;
+            string newName = EditWorkspaceName.Trim();
+
+            _editingProfile.Profile.Description = EditWorkspaceDescription.Trim();
+            _editingProfile.Profile.IconGlyph = EditWorkspaceIcon;
+
+            if (!string.Equals(oldName, newName, StringComparison.OrdinalIgnoreCase))
+            {
+                _profileService.DeleteProfile(oldName);
+                _editingProfile.Profile.Name = newName;
+            }
+
+            _profileService.SaveProfile(_editingProfile.Profile);
+            _editingProfile.NotifyAll();
+
+            IsEditingWorkspace = false;
+            LoadProfiles();
+            SelectedProfile = Profiles.FirstOrDefault(p => p.Name.Equals(newName, StringComparison.OrdinalIgnoreCase));
+            RegisterDefaultHotkeys();
+
+            StatusMessage = $"Workspace '{newName}' updated successfully.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error saving workspace: {ex.Message}";
         }
     }
 
@@ -213,11 +326,11 @@ public class MainViewModel : INotifyPropertyChanged
 
         try
         {
-            var updated = _windowManager.CaptureWorkspace(target.Name, target.Profile.Description);
+            var updated = _windowManager.CaptureWorkspace(target.Name, target.Profile.Description, target.IconGlyph);
             _profileService.SaveProfile(updated);
             target.Profile = updated;
             OnPropertyChanged(nameof(SelectedProfileWindowItems));
-            StatusMessage = $"Updated '{target.Name}' with current window layout ({updated.Windows.Count} windows).";
+            StatusMessage = $"Updated '{target.Name}' with current layout ({updated.Windows.Count} windows).";
         }
         catch (Exception ex)
         {
@@ -233,10 +346,15 @@ public class MainViewModel : INotifyPropertyChanged
         try
         {
             _profileService.DeleteProfile(target.Name);
-            Profiles.Remove(target);
+            var match = Profiles.FirstOrDefault(p => p.Name.Equals(target.Name, StringComparison.OrdinalIgnoreCase));
+            if (match != null)
+            {
+                Profiles.Remove(match);
+            }
             SelectedProfile = Profiles.FirstOrDefault();
             OnPropertyChanged(nameof(TotalProfilesCount));
-            StatusMessage = $"Profile '{target.Name}' deleted.";
+            RegisterDefaultHotkeys();
+            StatusMessage = $"Workspace '{target.Name}' deleted.";
         }
         catch (Exception ex)
         {
