@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.IO;
 using System.Windows;
 using System.Windows.Forms;
 using WorkspaceSwitcher.Core;
@@ -117,22 +118,41 @@ public class TrayIconService : IDisposable
 
     private static Icon GenerateAppIcon()
     {
+        try
+        {
+            string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app.ico");
+            if (File.Exists(iconPath))
+            {
+                return new Icon(iconPath, 32, 32);
+            }
+
+            if (!string.IsNullOrEmpty(Environment.ProcessPath))
+            {
+                var exeIcon = Icon.ExtractAssociatedIcon(Environment.ProcessPath);
+                if (exeIcon != null) return exeIcon;
+            }
+        }
+        catch
+        {
+            // Fallback to drawn icon
+        }
+
         using var bmp = new Bitmap(32, 32);
         using var g = Graphics.FromImage(bmp);
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
-        // Background dark rounded box
-        using var bgBrush = new SolidBrush(Color.FromArgb(30, 30, 30));
+        using var bgBrush = new SolidBrush(Color.FromArgb(17, 22, 42));
         g.FillRectangle(bgBrush, 0, 0, 32, 32);
 
-        // Draw 4 window tiles in accent blue
-        using var tileBrush1 = new SolidBrush(Color.FromArgb(0, 120, 215));
+        using var tileBrush1 = new SolidBrush(Color.FromArgb(99, 102, 241));
         using var tileBrush2 = new SolidBrush(Color.FromArgb(96, 205, 255));
+        using var tileBrush3 = new SolidBrush(Color.FromArgb(168, 85, 247));
+        using var tileBrush4 = new SolidBrush(Color.FromArgb(16, 185, 129));
 
-        g.FillRectangle(tileBrush1, 3, 3, 11, 11);
-        g.FillRectangle(tileBrush2, 17, 3, 12, 11);
-        g.FillRectangle(tileBrush2, 3, 17, 11, 12);
-        g.FillRectangle(tileBrush1, 17, 17, 12, 12);
+        g.FillRectangle(tileBrush1, 4, 4, 10, 10);
+        g.FillRectangle(tileBrush2, 17, 4, 11, 10);
+        g.FillRectangle(tileBrush3, 4, 17, 10, 11);
+        g.FillRectangle(tileBrush4, 17, 17, 11, 11);
 
         IntPtr hIcon = bmp.GetHicon();
         return Icon.FromHandle(hIcon);

@@ -6,6 +6,7 @@
         xmlns:vm="clr-namespace:WorkspaceSwitcher.UI.ViewModels"
         mc:Ignorable="d"
         Title="Workspace Switcher" 
+        Icon="app.ico"
         Height="780" Width="1180"
         MinHeight="620" MinWidth="980"
         WindowStartupLocation="CenterScreen"

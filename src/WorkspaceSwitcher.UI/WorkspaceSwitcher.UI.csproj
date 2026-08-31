@@ -7,9 +7,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <ApplicationIcon></ApplicationIcon>
+    <ApplicationIcon>app.ico</ApplicationIcon>
     <RootNamespace>WorkspaceSwitcher.UI</RootNamespace>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="app.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\WorkspaceSwitcher.Core\WorkspaceSwitcher.Core.csproj" />
