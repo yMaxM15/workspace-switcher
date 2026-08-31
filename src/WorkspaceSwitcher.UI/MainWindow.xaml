@@ -6,304 +6,498 @@
         xmlns:vm="clr-namespace:WorkspaceSwitcher.UI.ViewModels"
         mc:Ignorable="d"
         Title="Workspace Switcher" 
-        Height="680" Width="1020"
-        MinHeight="550" MinWidth="850"
+        Height="780" Width="1180"
+        MinHeight="620" MinWidth="980"
         WindowStartupLocation="CenterScreen"
-        Background="{StaticResource BgDarkBrush}"
+        Background="{StaticResource BgDeepNightBrush}"
         Foreground="{StaticResource TextPrimaryBrush}"
-        FontFamily="Segoe UI, Segoe UI Variable">
+        FontFamily="Segoe UI Variable, Segoe UI">
 
-    <Grid>
+    <Grid Margin="18,12,18,16">
         <Grid.RowDefinitions>
-            <!-- Header / Titlebar -->
+            <!-- Top Header Bar -->
             <RowDefinition Height="Auto"/>
             <!-- Main Content Area -->
             <RowDefinition Height="*"/>
-            <!-- Status Bar -->
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Top Header Bar -->
-        <Border Grid.Row="0" Background="{StaticResource SurfaceDarkBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="0,0,0,1" Padding="20,14">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+        <!-- 1. TOP HEADER BAR -->
+        <Grid Grid.Row="0" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <!-- Left: App Branding -->
+                <ColumnDefinition Width="*"/>
+                <!-- Right: Running Status Badge & Window Controls -->
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
 
-                <StackPanel Orientation="Horizontal" Grid.Column="0" VerticalAlignment="Center">
-                    <TextBlock Text="🪟" FontSize="22" Margin="0,0,10,0" VerticalAlignment="Center"/>
-                    <StackPanel>
-                        <TextBlock Text="Workspace Switcher" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                        <TextBlock Text="Multi-Window Layout Manager &amp; Hotkey Dispatcher" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
-                    </StackPanel>
+            <!-- Brand Logo + Title -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <Border Width="38" Height="38" CornerRadius="10" Background="{StaticResource IndigoPurpleGradient}" Margin="0,0,12,0">
+                    <TextBlock Text="🪟" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Workspace Switcher" FontSize="17" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                    <TextBlock Text="Save, restore and switch your Windows layouts." FontSize="11.5" Foreground="{StaticResource TextMutedBrush}"/>
                 </StackPanel>
+            </StackPanel>
 
-                <!-- Hotkey Status Badge -->
-                <Border Grid.Column="2" Background="#1B3322" BorderBrush="{StaticResource SuccessGreenBrush}" BorderThickness="1" CornerRadius="12" Padding="10,4" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal">
-                        <Ellipse Width="8" Height="8" Fill="{StaticResource SuccessGreenBrush}" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="Global Hotkeys Active (Ctrl+Alt+1..5)" FontSize="11" FontWeight="SemiBold" Foreground="#4EC9B0" VerticalAlignment="Center"/>
+            <!-- Running Pill Status -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Border Background="#0D1224" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="16" Padding="14,6" Margin="0,0,10,0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Ellipse Width="7" Height="7" Fill="#10B981" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Running" FontSize="11.5" FontWeight="SemiBold" Foreground="#10B981" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Ctrl + Alt + 1–5" FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Border>
-            </Grid>
-        </Border>
+            </StackPanel>
+        </Grid>
 
-        <!-- Content Area -->
-        <Grid Grid.Row="1" Margin="20,16">
+        <!-- 2. MAIN 2-COLUMN CONTENT -->
+        <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <!-- Left: Snapshot + Profiles list -->
-                <ColumnDefinition Width="380"/>
-                <!-- Right: Profile Inspector & Details -->
+                <!-- Left Column (Create + Workspaces List) -->
+                <ColumnDefinition Width="340"/>
+                <!-- Right Column (Inspector & Settings) -->
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- LEFT COLUMN: Snapshot & Profiles -->
+            <!-- LEFT COLUMN -->
             <Grid Grid.Column="0" Margin="0,0,16,0">
                 <Grid.RowDefinitions>
-                    <!-- Snapshot Form Card -->
+                    <!-- Create Workspace Card -->
                     <RowDefinition Height="Auto"/>
-                    <!-- Profile List Header -->
-                    <RowDefinition Height="Auto"/>
-                    <!-- Profile List -->
+                    <!-- My Workspaces List Card -->
                     <RowDefinition Height="*"/>
+                    <!-- Bottom Notice Card -->
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- Capture Snapshot Card -->
-                <Border Grid.Row="0" Background="{StaticResource CardDarkBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,14">
+                <!-- CARD 1: Create Workspace -->
+                <Border Grid.Row="0" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="16" Margin="0,0,0,14">
                     <StackPanel>
-                        <TextBlock Text="📸 Take Layout Snapshot" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                        <TextBox Style="{StaticResource DarkTextBox}" 
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                            <TextBlock Text="📷" FontSize="13" Foreground="{StaticResource AccentIndigoBrush}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Create Workspace" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Text="Capture your current window layout" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12"/>
+
+                        <!-- Workspace Name Input -->
+                        <TextBlock Text="Workspace Name" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,5"/>
+                        <TextBox Style="{StaticResource DarkGlassTextBox}" 
                                  Text="{Binding NewProfileName, UpdateSourceTrigger=PropertyChanged}" 
-                                 Tag="Profile name (e.g. Coding, Gaming)" 
-                                 Margin="0,0,0,8"/>
-                        <TextBox Style="{StaticResource DarkTextBox}" 
+                                 Margin="0,0,0,10"/>
+
+                        <!-- Description Input -->
+                        <TextBlock Text="Description (optional)" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,5"/>
+                        <TextBox Style="{StaticResource DarkGlassTextBox}" 
                                  Text="{Binding NewProfileDescription, UpdateSourceTrigger=PropertyChanged}" 
-                                 Tag="Optional description" 
-                                 Margin="0,0,0,12"/>
-                        <Button Style="{StaticResource PrimaryButton}" 
-                                Content="Capture Current Windows" 
-                                Command="{Binding CaptureNewProfileCommand}"/>
+                                 Margin="0,0,0,14"/>
+
+                        <!-- Capture Button -->
+                        <Button Style="{StaticResource IndigoGradientButton}" 
+                                Command="{Binding CaptureNewProfileCommand}">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="📷" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Capture Current Windows" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                 </Border>
 
-                <!-- Profiles List Header -->
-                <Grid Grid.Row="1" Margin="0,4,0,8">
-                    <TextBlock Text="Saved Workspaces" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-                    <Button Style="{StaticResource SecondaryButton}" Content="🔄 Refresh" HorizontalAlignment="Right" Padding="8,3" FontSize="11" Command="{Binding RefreshProfilesCommand}"/>
-                </Grid>
-
-                <!-- Profiles List -->
-                <ListBox Grid.Row="2" 
-                         ItemsSource="{Binding Profiles}" 
-                         SelectedItem="{Binding SelectedProfile}"
-                         Background="Transparent" 
-                         BorderThickness="0"
-                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                    <ListBox.ItemContainerStyle>
-                        <Style TargetType="ListBoxItem">
-                            <Setter Property="Padding" Value="0"/>
-                            <Setter Property="Margin" Value="0,0,0,8"/>
-                            <Setter Property="Background" Value="Transparent"/>
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="ListBoxItem">
-                                        <Border x:Name="ItemBorder" 
-                                                Background="{StaticResource CardDarkBrush}" 
-                                                BorderBrush="{StaticResource CardBorderBrush}" 
-                                                BorderThickness="1" 
-                                                CornerRadius="8" 
-                                                Padding="12">
-                                            <ContentPresenter/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{StaticResource AccentCyanBrush}"/>
-                                            </Trigger>
-                                            <Trigger Property="IsSelected" Value="True">
-                                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{StaticResource AccentBlueBrush}"/>
-                                                <Setter TargetName="ItemBorder" Property="Background" Value="#2A2D30"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </ListBox.ItemContainerStyle>
-
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-
-                                <!-- Top Row: Name & Window Count Badge -->
-                                <Grid Grid.Row="0">
-                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-                                    <Border Background="#333333" CornerRadius="10" Padding="8,2" HorizontalAlignment="Right">
-                                        <TextBlock Text="{Binding WindowCount, StringFormat='{}{0} Windows'}" FontSize="10" Foreground="{StaticResource AccentCyanBrush}" FontWeight="SemiBold"/>
-                                    </Border>
-                                </Grid>
-
-                                <!-- Middle: Description -->
-                                <TextBlock Grid.Row="1" Text="{Binding Description}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,8" TextTrimming="CharacterEllipsis"/>
-
-                                <!-- Bottom: Action Buttons -->
-                                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                                    <Button Style="{StaticResource PrimaryButton}" 
-                                            Content="⚡ Apply" 
-                                            Padding="10,4" FontSize="11" Margin="0,0,6,0"
-                                            Command="{Binding DataContext.ApplyProfileCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                            CommandParameter="{Binding}"/>
-                                    <Button Style="{StaticResource SecondaryButton}" 
-                                            Content="📸 Overwrite" 
-                                            Padding="8,4" FontSize="11" Margin="0,0,6,0"
-                                            Command="{Binding DataContext.OverwriteProfileCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                            CommandParameter="{Binding}"/>
-                                    <Button Style="{StaticResource DangerButton}" 
-                                            Content="🗑️" 
-                                            Padding="8,4" FontSize="11"
-                                            Command="{Binding DataContext.DeleteProfileCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                            CommandParameter="{Binding}"/>
-                                </StackPanel>
-                            </Grid>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </Grid>
-
-            <!-- RIGHT COLUMN: Profile Inspector & Details -->
-            <Grid Grid.Column="1">
-                <Grid.RowDefinitions>
-                    <!-- Detail Header -->
-                    <RowDefinition Height="Auto"/>
-                    <!-- Windows List in Profile -->
-                    <RowDefinition Height="*"/>
-                    <!-- Preferences / Settings Box -->
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-
-                <!-- Detail Header -->
-                <Border Grid.Row="0" Background="{StaticResource CardDarkBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,14">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="{Binding SelectedProfile.Name, FallbackValue='Select a Profile'}" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="{Binding SelectedProfile.Description, FallbackValue='Click on a profile on the left to view captured windows'}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
-                        </StackPanel>
-
-                        <Button Grid.Column="1" 
-                                Style="{StaticResource PrimaryButton}" 
-                                Content="⚡ Apply This Workspace" 
-                                Padding="16,8"
-                                Command="{Binding ApplyProfileCommand}"
-                                CommandParameter="{Binding SelectedProfile}"
-                                IsEnabled="{Binding HasSelectedProfile}"/>
-                    </Grid>
-                </Border>
-
-                <!-- Captured Windows List -->
-                <Border Grid.Row="1" Background="{StaticResource CardDarkBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,14">
+                <!-- CARD 2: My Workspaces List -->
+                <Border Grid.Row="1" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="16,14" Margin="0,0,0,12">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="Captured Windows in Profile:" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Margin="4,0,0,8"/>
+                        <!-- Header with count & + New -->
+                        <Grid Grid.Row="0" Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="My Workspaces" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                <Border Background="#1E2642" CornerRadius="8" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding TotalProfilesCount}" FontSize="10.5" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </Border>
+                            </StackPanel>
 
-                        <ListView Grid.Row="1" 
-                                  ItemsSource="{Binding SelectedProfileWindows}" 
-                                  Background="Transparent" 
-                                  BorderThickness="0" 
-                                  Foreground="{StaticResource TextPrimaryBrush}">
-                            <ListView.View>
-                                <GridView>
-                                    <GridViewColumn Header="Process" Width="120">
-                                        <GridViewColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding ProcessName}" FontWeight="SemiBold" Foreground="{StaticResource AccentCyanBrush}"/>
-                                            </DataTemplate>
-                                        </GridViewColumn.CellTemplate>
-                                    </GridViewColumn>
+                            <Button Style="{StaticResource DarkIconButton}" 
+                                    Content="+ New" 
+                                    HorizontalAlignment="Right" 
+                                    Padding="9,4" FontSize="11" FontWeight="SemiBold"
+                                    Command="{Binding RefreshProfilesCommand}"/>
+                        </Grid>
 
-                                    <GridViewColumn Header="Window Title" Width="240">
-                                        <GridViewColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding WindowTitle}" TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextPrimaryBrush}"/>
-                                            </DataTemplate>
-                                        </GridViewColumn.CellTemplate>
-                                    </GridViewColumn>
-
-                                    <GridViewColumn Header="State" Width="90">
-                                        <GridViewColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <Border Background="#2B2B2B" CornerRadius="4" Padding="6,2" HorizontalAlignment="Left">
-                                                    <TextBlock Text="{Binding Placement.State}" FontSize="11" Foreground="#9CDCFE"/>
+                        <!-- Workspaces List -->
+                        <ListBox Grid.Row="1" 
+                                 ItemsSource="{Binding Profiles}" 
+                                 SelectedItem="{Binding SelectedProfile}"
+                                 Background="Transparent" 
+                                 BorderThickness="0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Margin" Value="0,0,0,8"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border x:Name="ItemBorder" 
+                                                        Background="{StaticResource CardBgLightBrush}" 
+                                                        BorderBrush="{StaticResource CardBorderBrush}" 
+                                                        BorderThickness="1" 
+                                                        CornerRadius="10" 
+                                                        Padding="10,9">
+                                                    <ContentPresenter/>
                                                 </Border>
-                                            </DataTemplate>
-                                        </GridViewColumn.CellTemplate>
-                                    </GridViewColumn>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{StaticResource CardBorderHoverBrush}"/>
+                                                        <Setter TargetName="ItemBorder" Property="Background" Value="#1A2342"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{StaticResource AccentIndigoBrush}"/>
+                                                        <Setter TargetName="ItemBorder" Property="Background" Value="#1E284E"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
 
-                                    <GridViewColumn Header="Coordinates (X, Y, W, H)" Width="170">
-                                        <GridViewColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}">
-                                                    <TextBlock.Text>
-                                                        <MultiBinding StringFormat="{}{0}, {1} ({2}x{3})">
-                                                            <Binding Path="Placement.NormalPosition.Left"/>
-                                                            <Binding Path="Placement.NormalPosition.Top"/>
-                                                            <Binding Path="Placement.NormalPosition.Width"/>
-                                                            <Binding Path="Placement.NormalPosition.Height"/>
-                                                        </MultiBinding>
-                                                    </TextBlock.Text>
-                                                </TextBlock>
-                                            </DataTemplate>
-                                        </GridViewColumn.CellTemplate>
-                                    </GridViewColumn>
-                                </GridView>
-                            </ListView.View>
-                        </ListView>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Left Icon Badge -->
+                                        <Border Grid.Column="0" Width="32" Height="32" CornerRadius="8" Background="{Binding IconBrush}" Margin="0,0,10,0" VerticalAlignment="Center">
+                                            <TextBlock Text="💻" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+
+                                        <!-- Center: Info -->
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,1,0,2" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding RelativeTime}" FontSize="10" Foreground="{StaticResource TextMutedBrush}"/>
+                                        </StackPanel>
+
+                                        <!-- Right: Metadata & Actions -->
+                                        <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,6">
+                                                <TextBlock Text="{Binding WindowCount, StringFormat='{}{0} windows'}" FontSize="10" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,6,0"/>
+                                                <TextBlock Text="{Binding MonitorCount, StringFormat='{}🖥 {0}'}" FontSize="10" Foreground="{StaticResource TextMutedBrush}"/>
+                                            </StackPanel>
+
+                                            <!-- Mini Action Buttons (Apply, Overwrite, Delete) -->
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                <Button Style="{StaticResource DarkIconButton}" 
+                                                        Content="▶" 
+                                                        Padding="6,3" FontSize="10" Margin="0,0,4,0"
+                                                        ToolTip="Apply layout"
+                                                        Command="{Binding DataContext.ApplyProfileCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"/>
+                                                <Button Style="{StaticResource DarkIconButton}" 
+                                                        Content="✏️" 
+                                                        Padding="5,3" FontSize="10" Margin="0,0,4,0"
+                                                        ToolTip="Overwrite with current layout"
+                                                        Command="{Binding DataContext.OverwriteProfileCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"/>
+                                                <Button Style="{StaticResource DarkIconButton}" 
+                                                        Content="🗑️" 
+                                                        Padding="5,3" FontSize="10"
+                                                        ToolTip="Delete workspace"
+                                                        Command="{Binding DataContext.DeleteProfileCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
                     </Grid>
                 </Border>
 
-                <!-- Settings / Options Footer -->
-                <Border Grid.Row="2" Background="{StaticResource CardDarkBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="14">
+                <!-- CARD 3: Bottom Notice Card -->
+                <Border Grid.Row="2" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="14,10">
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-
-                        <CheckBox Grid.Column="0" 
-                                  IsChecked="{Binding AutoLaunchMissingApps}" 
-                                  Foreground="{StaticResource TextPrimaryBrush}" 
-                                  VerticalAlignment="Center">
-                            <TextBlock Text="Auto-launch closed apps on restore" FontSize="12"/>
-                        </CheckBox>
-
-                        <CheckBox Grid.Column="1" 
-                                  IsChecked="{Binding MinimizeToTrayOnClose}" 
-                                  Foreground="{StaticResource TextPrimaryBrush}" 
-                                  VerticalAlignment="Center">
-                            <TextBlock Text="Minimize to System Tray on close [X]" FontSize="12"/>
-                        </CheckBox>
+                        <TextBlock Grid.Column="0" Text="🖥" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="Workspace Switcher is running in the background" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Text="Use your global hotkeys to quickly switch between workspaces." FontSize="10" Foreground="{StaticResource TextMutedBrush}"/>
+                        </StackPanel>
                     </Grid>
                 </Border>
             </Grid>
-        </Grid>
 
-        <!-- Bottom Status Bar -->
-        <Border Grid.Row="2" Background="{StaticResource SurfaceDarkBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="0,1,0,0" Padding="20,8">
-            <TextBlock Text="{Binding StatusMessage}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
-        </Border>
+            <!-- RIGHT COLUMN (Hero Header + Windows List + Settings) -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <!-- Hero Header Card -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Windows in this Workspace Card -->
+                    <RowDefinition Height="*"/>
+                    <!-- Restore Settings Card -->
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- 1. HERO HEADER CARD -->
+                <Border Grid.Row="0" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="20,16" Margin="0,0,0,14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left: Large Icon + Name + Description + Tags -->
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <Border Width="42" Height="42" CornerRadius="10" Background="{StaticResource IndigoPurpleGradient}" Margin="0,0,14,0" VerticalAlignment="Center">
+                                    <TextBlock Text="💻" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding SelectedProfile.Name, FallbackValue='Select a Workspace'}" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                    <TextBlock Text="{Binding SelectedProfile.Description, FallbackValue='Choose a workspace from the left panel'}" FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Metadata tags row -->
+                            <StackPanel Orientation="Horizontal" Margin="56,0,0,0">
+                                <TextBlock Text="{Binding SelectedProfile.WindowCount, StringFormat='{}🗔 {0} Windows  •  '}" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock Text="{Binding SelectedProfile.MonitorCount, StringFormat='{}🖥 {0} Monitors  •  '}" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock Text="{Binding SelectedProfile.RelativeTime, StringFormat='{}Captured: {0}'}" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Right: Action Buttons (Restore Workspace + Update) -->
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+                            <Button Style="{StaticResource IndigoGradientButton}" 
+                                    Padding="20,10" Margin="0,0,0,8"
+                                    Command="{Binding ApplyProfileCommand}"
+                                    CommandParameter="{Binding SelectedProfile}"
+                                    IsEnabled="{Binding HasSelectedProfile}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="▶" FontSize="12" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Restore Workspace" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Style="{StaticResource DarkSecondaryButton}" 
+                                        Padding="12,6" Margin="0,0,6,0"
+                                        Command="{Binding OverwriteProfileCommand}"
+                                        CommandParameter="{Binding SelectedProfile}"
+                                        IsEnabled="{Binding HasSelectedProfile}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🔄" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Update Workspace" FontSize="11.5" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource DarkIconButton}" 
+                                        Content="🗑️" 
+                                        Padding="10,6" FontSize="11"
+                                        Command="{Binding DeleteProfileCommand}"
+                                        CommandParameter="{Binding SelectedProfile}"
+                                        IsEnabled="{Binding HasSelectedProfile}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- 2. WINDOWS IN THIS WORKSPACE LIST -->
+                <Border Grid.Row="1" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="18,14" Margin="0,0,0,14">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Title + View Pill -->
+                        <Grid Grid.Row="0" Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Windows in this workspace" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                <Border Background="#1E2642" CornerRadius="8" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding SelectedProfile.WindowCount, FallbackValue='0'}" FontSize="10.5" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </Border>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Windows List -->
+                        <ListBox Grid.Row="1" 
+                                 ItemsSource="{Binding SelectedProfileWindowItems}" 
+                                 Background="Transparent" 
+                                 BorderThickness="0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Margin" Value="0,0,0,7"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border x:Name="WindowRowBorder" 
+                                                        Background="{StaticResource CardBgLightBrush}" 
+                                                        BorderBrush="{StaticResource CardBorderBrush}" 
+                                                        BorderThickness="1" 
+                                                        CornerRadius="10" 
+                                                        Padding="12,9">
+                                                    <ContentPresenter/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="WindowRowBorder" Property="BorderBrush" Value="{StaticResource CardBorderHoverBrush}"/>
+                                                        <Setter TargetName="WindowRowBorder" Property="Background" Value="#1A2342"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <!-- Process Icon + Name + Exe Path -->
+                                            <ColumnDefinition Width="220"/>
+                                            <!-- Window Title -->
+                                            <ColumnDefinition Width="*"/>
+                                            <!-- State Pill Badge -->
+                                            <ColumnDefinition Width="90"/>
+                                            <!-- Monitor & Coordinates -->
+                                            <ColumnDefinition Width="150"/>
+                                            <!-- Arrow -->
+                                            <ColumnDefinition Width="30"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Process Column -->
+                                        <Grid Grid.Column="0" VerticalAlignment="Center">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- App Icon -->
+                                            <Image Grid.Column="0" Source="{Binding AppIcon}" Width="22" Height="22" Margin="0,0,10,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding ProcessName}" FontWeight="Bold" FontSize="12.5" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                <TextBlock Text="{Binding ExecutablePath}" FontSize="10" Foreground="{StaticResource TextMutedBrush}" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Window Title -->
+                                        <TextBlock Grid.Column="1" Text="{Binding WindowTitle}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="10,0,14,0" TextTrimming="CharacterEllipsis"/>
+
+                                        <!-- State Pill Badge -->
+                                        <Border Grid.Column="2" CornerRadius="6" Padding="8,3" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="{StaticResource NormalStateBg}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding StateText}" Value="Maximized">
+                                                            <Setter Property="Background" Value="{StaticResource MaximizedStateBg}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding StateText}" Value="Minimized">
+                                                            <Setter Property="Background" Value="{StaticResource MinimizedStateBg}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+
+                                            <TextBlock Text="{Binding StateText}" FontSize="11" FontWeight="SemiBold">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource NormalStateText}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding StateText}" Value="Maximized">
+                                                                <Setter Property="Foreground" Value="{StaticResource MaximizedStateText}"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding StateText}" Value="Minimized">
+                                                                <Setter Property="Foreground" Value="{StaticResource MinimizedStateText}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+
+                                        <!-- Monitor & Coordinates -->
+                                        <StackPanel Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                            <TextBlock Text="{Binding MonitorDisplay}" FontSize="11.5" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" HorizontalAlignment="Right"/>
+                                            <TextBlock Text="{Binding FormattedCoordinates}" FontSize="10" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Right"/>
+                                        </StackPanel>
+
+                                        <!-- Chevron -->
+                                        <TextBlock Grid.Column="4" Text="⌵" FontSize="13" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+
+                <!-- 3. RESTORE SETTINGS CARD (with iOS / Fluent Purple Toggle Switches) -->
+                <Border Grid.Row="2" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="18,14">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <TextBlock Text="⚙" FontSize="13" Foreground="{StaticResource AccentIndigoBrush}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Restore Settings" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <!-- Left Option -->
+                                <ColumnDefinition Width="*"/>
+                                <!-- Divider -->
+                                <ColumnDefinition Width="24"/>
+                                <!-- Right Option -->
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Option 1: Auto-launch closed apps -->
+                            <Grid Grid.Column="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
+                                    <TextBlock Text="Auto-launch closed apps on restore" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                    <TextBlock Text="Automatically start applications that were closed." FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" Style="{StaticResource ModernToggleSwitch}" IsChecked="{Binding AutoLaunchMissingApps}"/>
+                            </Grid>
+
+                            <!-- Option 2: Minimize to System Tray -->
+                            <Grid Grid.Column="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
+                                    <TextBlock Text="Minimize to System Tray on close [X]" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                    <TextBlock Text="Keep Workspace Switcher running in the background." FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" Style="{StaticResource ModernToggleSwitch}" IsChecked="{Binding MinimizeToTrayOnClose}"/>
+                            </Grid>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
     </Grid>
 </Window>

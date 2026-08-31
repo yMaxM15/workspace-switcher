@@ -3,55 +3,77 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-        <!-- Dark Mode Color Palette -->
-        <Color x:Key="BgDark">#121212</Color>
-        <Color x:Key="SurfaceDark">#1E1E1E</Color>
-        <Color x:Key="CardDark">#252526</Color>
-        <Color x:Key="CardBorder">#333333</Color>
-        <Color x:Key="AccentBlue">#0078D4</Color>
-        <Color x:Key="AccentBlueHover">#1084D9</Color>
-        <Color x:Key="AccentCyan">#60CDFF</Color>
+        <!-- Dark Cyberpunk / Indigo Glassmorphism Color Palette -->
+        <Color x:Key="BgDeepNight">#0A0D18</Color>
+        <Color x:Key="CardBg">#11162A</Color>
+        <Color x:Key="CardBgLight">#161D36</Color>
+        <Color x:Key="CardBorder">#1E2642</Color>
+        <Color x:Key="CardBorderHover">#3B4874</Color>
+        <Color x:Key="AccentIndigo">#6366F1</Color>
+        <Color x:Key="AccentPurple">#7C3AED</Color>
+        <Color x:Key="ButtonDarkBg">#1A223E</Color>
+        <Color x:Key="ButtonDarkBorder">#263155</Color>
         <Color x:Key="TextPrimary">#FFFFFF</Color>
-        <Color x:Key="TextSecondary">#A0A0A0</Color>
-        <Color x:Key="TextMuted">#707070</Color>
-        <Color x:Key="DangerRed">#D13438</Color>
-        <Color x:Key="SuccessGreen">#107C41</Color>
+        <Color x:Key="TextSecondary">#94A3B8</Color>
+        <Color x:Key="TextMuted">#717C9B</Color>
 
-        <SolidColorBrush x:Key="BgDarkBrush" Color="{StaticResource BgDark}"/>
-        <SolidColorBrush x:Key="SurfaceDarkBrush" Color="{StaticResource SurfaceDark}"/>
-        <SolidColorBrush x:Key="CardDarkBrush" Color="{StaticResource CardDark}"/>
+        <!-- Solid Brushes -->
+        <SolidColorBrush x:Key="BgDeepNightBrush" Color="{StaticResource BgDeepNight}"/>
+        <SolidColorBrush x:Key="CardBgBrush" Color="{StaticResource CardBg}"/>
+        <SolidColorBrush x:Key="CardBgLightBrush" Color="{StaticResource CardBgLight}"/>
         <SolidColorBrush x:Key="CardBorderBrush" Color="{StaticResource CardBorder}"/>
-        <SolidColorBrush x:Key="AccentBlueBrush" Color="{StaticResource AccentBlue}"/>
-        <SolidColorBrush x:Key="AccentBlueHoverBrush" Color="{StaticResource AccentBlueHover}"/>
-        <SolidColorBrush x:Key="AccentCyanBrush" Color="{StaticResource AccentCyan}"/>
+        <SolidColorBrush x:Key="CardBorderHoverBrush" Color="{StaticResource CardBorderHover}"/>
+        <SolidColorBrush x:Key="AccentIndigoBrush" Color="{StaticResource AccentIndigo}"/>
+        <SolidColorBrush x:Key="AccentPurpleBrush" Color="{StaticResource AccentPurple}"/>
+        <SolidColorBrush x:Key="ButtonDarkBgBrush" Color="{StaticResource ButtonDarkBg}"/>
+        <SolidColorBrush x:Key="ButtonDarkBorderBrush" Color="{StaticResource ButtonDarkBorder}"/>
         <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimary}"/>
         <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondary}"/>
         <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMuted}"/>
-        <SolidColorBrush x:Key="DangerRedBrush" Color="{StaticResource DangerRed}"/>
-        <SolidColorBrush x:Key="SuccessGreenBrush" Color="{StaticResource SuccessGreen}"/>
 
-        <!-- Modern Button Style -->
-        <Style x:Key="PrimaryButton" TargetType="Button">
-            <Setter Property="Background" Value="{StaticResource AccentBlueBrush}"/>
+        <!-- Gradients -->
+        <LinearGradientBrush x:Key="IndigoPurpleGradient" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#6366F1" Offset="0"/>
+            <GradientStop Color="#7C3AED" Offset="1"/>
+        </LinearGradientBrush>
+
+        <LinearGradientBrush x:Key="IndigoPurpleGradientHover" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#7578F8" Offset="0"/>
+            <GradientStop Color="#8B5CF6" Offset="1"/>
+        </LinearGradientBrush>
+
+        <!-- Status Tag Brushes -->
+        <SolidColorBrush x:Key="NormalStateBg" Color="#0B3322"/>
+        <SolidColorBrush x:Key="NormalStateText" Color="#34D399"/>
+        <SolidColorBrush x:Key="MaximizedStateBg" Color="#162A4F"/>
+        <SolidColorBrush x:Key="MaximizedStateText" Color="#60A5FA"/>
+        <SolidColorBrush x:Key="MinimizedStateBg" Color="#382607"/>
+        <SolidColorBrush x:Key="MinimizedStateText" Color="#FBBF24"/>
+
+        <!-- Primary Indigo Gradient Button -->
+        <Style x:Key="IndigoGradientButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource IndigoPurpleGradient}"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="16,10"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" 
-                                CornerRadius="6" 
+                        <Border x:Name="Border" 
+                                Background="{TemplateBinding Background}" 
+                                CornerRadius="8" 
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="{StaticResource AccentBlueHoverBrush}"/>
+                                <Setter TargetName="Border" Property="Background" Value="{StaticResource IndigoPurpleGradientHover}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.5"/>
+                                <Setter Property="Opacity" Value="0.45"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -59,26 +81,31 @@
             </Setter>
         </Style>
 
-        <Style x:Key="SecondaryButton" TargetType="Button">
-            <Setter Property="Background" Value="{StaticResource CardDarkBrush}"/>
+        <!-- Secondary Dark Outline Button -->
+        <Style x:Key="DarkSecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource ButtonDarkBgBrush}"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ButtonDarkBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" 
+                        <Border x:Name="Border" 
+                                Background="{TemplateBinding Background}" 
                                 BorderBrush="{TemplateBinding BorderBrush}" 
                                 BorderThickness="{TemplateBinding BorderThickness}" 
-                                CornerRadius="6" 
+                                CornerRadius="8" 
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#323233"/>
+                                <Setter TargetName="Border" Property="Background" Value="#232C4F"/>
+                                <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource AccentIndigoBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -86,17 +113,19 @@
             </Setter>
         </Style>
 
-        <Style x:Key="DangerButton" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{StaticResource DangerRedBrush}"/>
-            <Setter Property="Padding" Value="10,6"/>
+        <!-- Compact Icon Button -->
+        <Style x:Key="DarkIconButton" TargetType="Button">
+            <Setter Property="Background" Value="#171E36"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="BorderBrush" Value="#242F54"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="{StaticResource DangerRedBrush}"/>
+            <Setter Property="Padding" Value="7,5"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" 
+                        <Border x:Name="Border" 
+                                Background="{TemplateBinding Background}" 
                                 BorderBrush="{TemplateBinding BorderBrush}" 
                                 BorderThickness="{TemplateBinding BorderThickness}" 
                                 CornerRadius="6" 
@@ -105,7 +134,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="{StaticResource DangerRedBrush}"/>
+                                <Setter TargetName="Border" Property="Background" Value="{StaticResource AccentIndigoBrush}"/>
                                 <Setter Property="Foreground" Value="White"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -114,24 +143,65 @@
             </Setter>
         </Style>
 
-        <!-- Modern TextBox Style -->
-        <Style x:Key="DarkTextBox" TargetType="TextBox">
-            <Setter Property="Background" Value="{StaticResource CardDarkBrush}"/>
+        <!-- Modern Dark Glass TextBox -->
+        <Style x:Key="DarkGlassTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#0C1020"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-            <Setter Property="CaretBrush" Value="{StaticResource AccentCyanBrush}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource AccentIndigoBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="10,8"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="12,9"/>
+            <Setter Property="FontSize" Value="12.5"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
-                        <Border Background="{TemplateBinding Background}" 
+                        <Border x:Name="Border" 
+                                Background="{TemplateBinding Background}" 
                                 BorderBrush="{TemplateBinding BorderBrush}" 
                                 BorderThickness="{TemplateBinding BorderThickness}" 
-                                CornerRadius="6">
-                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                                CornerRadius="8">
+                            <Grid>
+                                <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                            </Grid>
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource AccentIndigoBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Modern Purple Toggle Switch Style for CheckBox -->
+        <Style x:Key="ModernToggleSwitch" TargetType="CheckBox">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="Track" 
+                                Width="44" Height="24" 
+                                CornerRadius="12" 
+                                Background="#2A3352" 
+                                VerticalAlignment="Center">
+                            <Ellipse x:Name="Thumb" 
+                                     Width="18" Height="18" 
+                                     Fill="White" 
+                                     HorizontalAlignment="Left" 
+                                     Margin="3,0,0,0"
+                                     VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Track" Property="Background" Value="{StaticResource AccentPurpleBrush}"/>
+                                <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right"/>
+                                <Setter TargetName="Thumb" Property="Margin" Value="0,0,3,0"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Track" Property="Opacity" Value="0.9"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>

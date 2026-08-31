@@ -21,7 +21,7 @@ public class MainViewModel : INotifyPropertyChanged
     private ProfileItemViewModel? _selectedProfile;
     private string _newProfileName = string.Empty;
     private string _newProfileDescription = string.Empty;
-    private string _statusMessage = "Ready. Listening for global hotkeys...";
+    private string _statusMessage = "Workspace Switcher is running in the background";
     private bool _autoLaunchMissingApps;
     private bool _minimizeToTrayOnClose;
 
@@ -35,20 +35,20 @@ public class MainViewModel : INotifyPropertyChanged
             _selectedProfile = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasSelectedProfile));
-            OnPropertyChanged(nameof(SelectedProfileWindows));
+            OnPropertyChanged(nameof(SelectedProfileWindowItems));
         }
     }
 
     public bool HasSelectedProfile => SelectedProfile != null;
 
-    public ObservableCollection<WindowInfo> SelectedProfileWindows
+    public ObservableCollection<WindowItemViewModel> SelectedProfileWindowItems
     {
         get
         {
-            var list = new ObservableCollection<WindowInfo>();
-            if (SelectedProfile?.Profile.Windows != null)
+            var list = new ObservableCollection<WindowItemViewModel>();
+            if (SelectedProfile?.WindowItems != null)
             {
-                foreach (var w in SelectedProfile.Profile.Windows)
+                foreach (var w in SelectedProfile.WindowItems)
                 {
                     list.Add(w);
                 }
@@ -109,6 +109,8 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    public int TotalProfilesCount => Profiles.Count;
+
     public IProfileService ProfileService => _profileService;
     public WindowManager WindowManager => _windowManager;
 
@@ -150,17 +152,18 @@ public class MainViewModel : INotifyPropertyChanged
     {
         Profiles.Clear();
         var allProfiles = _profileService.GetAllProfiles();
+        int idx = 0;
         foreach (var p in allProfiles.OrderByDescending(p => p.LastModifiedAt))
         {
-            Profiles.Add(new ProfileItemViewModel(p));
+            Profiles.Add(new ProfileItemViewModel(p, idx++));
         }
+
+        OnPropertyChanged(nameof(TotalProfilesCount));
 
         if (SelectedProfile == null && Profiles.Count > 0)
         {
             SelectedProfile = Profiles[0];
         }
-
-        StatusMessage = $"Loaded {Profiles.Count} profile(s).";
     }
 
     public void CaptureNewProfile()
@@ -194,7 +197,7 @@ public class MainViewModel : INotifyPropertyChanged
         try
         {
             int count = _windowManager.RestoreWorkspace(target.Profile, _autoLaunchMissingApps);
-            StatusMessage = $"Applied profile '{target.Name}'. Repositioned {count} window(s).";
+            StatusMessage = $"Restored '{target.Name}' ({count} windows repositioned).";
         }
         catch (Exception ex)
         {
@@ -212,8 +215,8 @@ public class MainViewModel : INotifyPropertyChanged
             var updated = _windowManager.CaptureWorkspace(target.Name, target.Profile.Description);
             _profileService.SaveProfile(updated);
             target.Profile = updated;
-            OnPropertyChanged(nameof(SelectedProfileWindows));
-            StatusMessage = $"Updated profile '{target.Name}' with current window layout ({updated.Windows.Count} windows).";
+            OnPropertyChanged(nameof(SelectedProfileWindowItems));
+            StatusMessage = $"Updated '{target.Name}' with current window layout ({updated.Windows.Count} windows).";
         }
         catch (Exception ex)
         {
@@ -231,6 +234,7 @@ public class MainViewModel : INotifyPropertyChanged
             _profileService.DeleteProfile(target.Name);
             Profiles.Remove(target);
             SelectedProfile = Profiles.FirstOrDefault();
+            OnPropertyChanged(nameof(TotalProfilesCount));
             StatusMessage = $"Profile '{target.Name}' deleted.";
         }
         catch (Exception ex)
@@ -245,7 +249,6 @@ public class MainViewModel : INotifyPropertyChanged
         {
             _hotkeyManager.UnregisterAll();
 
-            // Bind Ctrl+Alt+1, Ctrl+Alt+2, ... to the first profiles
             uint currentKey = 0x31; // '1'
             foreach (var p in Profiles.Take(5))
             {
