@@ -30,8 +30,9 @@ When switching between multi-monitor setups, docking stations, unplugging extern
 
 * 📸 **Intelligent Window Snapshots:** Automatically discovers all user-facing application windows while filtering out invisible system services, desktop shells, and background UWP apps.
 * ⚡ **Pixel-Perfect Restoration:** Restores exact window coordinates and states (`Maximized`, `Normal`, `Minimized`) across single- and multi-monitor setups without visual distortions.
+* 🎛️ **Interactive Window Customization:** Click on any window card to expand the customization drawer — change target states (`Normal`, `Maximized`, `Minimized`), reassign to specific displays (`Monitor 1`, `Monitor 2`, `Monitor 3`), edit pixel coordinates, or exclude windows with instant auto-save.
 * ⌨️ **Standalone Global Hotkey Dispatcher:** Dedicated Win32 message-only thread (`HWND_MESSAGE`) enables low-latency global shortcuts (`Ctrl+Alt+1..5`) without blocking or relying on the GUI thread.
-* 🎨 **Modern Dark Theme WPF UI:** Clean Fluent-inspired interface with profile cards, window inspector, and quick actions built on MVVM architecture.
+* 🎨 **Cyberpunk / Indigo Glassmorphism UI:** Modern Fluent-inspired dark interface with rich extracted app icons, relative timestamps, monitor badges, and smooth iOS-style toggle switches.
 * 🪟 **System Tray Quick-Switch:** Minimal footprint tray icon with a dynamic context menu for 1-click workspace switching and snapshot capture.
 * 🚀 **Auto-Launch Missing Apps:** Optionally launches closed applications using their saved disk executable paths during layout restoration.
 * 🛡️ **Zero-Corruption Persistence:** Profiles are stored as human-readable JSON files in `%APPDATA%\WorkspaceSwitcher\Profiles` with atomic file replace mechanics.

@@ -155,7 +155,7 @@ public class MainViewModel : INotifyPropertyChanged
         int idx = 0;
         foreach (var p in allProfiles.OrderByDescending(p => p.LastModifiedAt))
         {
-            Profiles.Add(new ProfileItemViewModel(p, idx++));
+            Profiles.Add(new ProfileItemViewModel(p, idx++, pvm => _profileService.SaveProfile(pvm.Profile)));
         }
 
         OnPropertyChanged(nameof(TotalProfilesCount));

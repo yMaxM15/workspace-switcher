@@ -12,6 +12,7 @@ public class ProfileItemViewModel : INotifyPropertyChanged
 {
     private WorkspaceProfile _profile;
     private readonly int _colorIndex;
+    private readonly Action<ProfileItemViewModel>? _onProfileUpdated;
 
     public WorkspaceProfile Profile
     {
@@ -19,13 +20,7 @@ public class ProfileItemViewModel : INotifyPropertyChanged
         set
         {
             _profile = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(Name));
-            OnPropertyChanged(nameof(Description));
-            OnPropertyChanged(nameof(WindowCount));
-            OnPropertyChanged(nameof(MonitorCount));
-            OnPropertyChanged(nameof(RelativeTime));
-            OnPropertyChanged(nameof(WindowItems));
+            NotifyAll();
         }
     }
 
@@ -92,14 +87,43 @@ public class ProfileItemViewModel : INotifyPropertyChanged
         get
         {
             if (_profile.Windows == null) return Array.Empty<WindowItemViewModel>();
-            return _profile.Windows.Select(w => new WindowItemViewModel(w)).ToList();
+            return _profile.Windows.Select(w => new WindowItemViewModel(
+                w,
+                onChanged: OnWindowChanged,
+                onRemove: OnWindowRemoved
+            )).ToList();
         }
     }
 
-    public ProfileItemViewModel(WorkspaceProfile profile, int index = 0)
+    public ProfileItemViewModel(WorkspaceProfile profile, int index = 0, Action<ProfileItemViewModel>? onProfileUpdated = null)
     {
         _profile = profile;
         _colorIndex = index;
+        _onProfileUpdated = onProfileUpdated;
+    }
+
+    private void OnWindowChanged()
+    {
+        NotifyAll();
+        _onProfileUpdated?.Invoke(this);
+    }
+
+    private void OnWindowRemoved(WindowItemViewModel item)
+    {
+        _profile.Windows?.Remove(item.Model);
+        NotifyAll();
+        _onProfileUpdated?.Invoke(this);
+    }
+
+    public void NotifyAll()
+    {
+        OnPropertyChanged(nameof(Profile));
+        OnPropertyChanged(nameof(Name));
+        OnPropertyChanged(nameof(Description));
+        OnPropertyChanged(nameof(WindowCount));
+        OnPropertyChanged(nameof(MonitorCount));
+        OnPropertyChanged(nameof(RelativeTime));
+        OnPropertyChanged(nameof(WindowItems));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

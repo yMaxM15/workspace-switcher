@@ -37,6 +37,8 @@
             <GradientStop Color="#7C3AED" Offset="1"/>
         </LinearGradientBrush>
 
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
         <LinearGradientBrush x:Key="IndigoPurpleGradientHover" StartPoint="0,0" EndPoint="1,1">
             <GradientStop Color="#7578F8" Offset="0"/>
             <GradientStop Color="#8B5CF6" Offset="1"/>
