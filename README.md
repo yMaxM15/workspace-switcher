@@ -212,12 +212,19 @@ Profiles are stored in `%APPDATA%\WorkspaceSwitcher\Profiles\<ProfileName>.json`
 
 ## 🚀 Quick Start
 
-### Prerequisites
-* **Windows 10 / 11** (64-bit or ARM64)
-* **.NET 8.0 SDK** or later ([Download .NET SDK](https://dotnet.microsoft.com/download))
-* Visual Studio 2022 (with *.NET desktop development* workload) or VS Code / JetBrains Rider.
+### 1. Prerequisites & Installation
+* **Windows 10 / 11** (x64 / ARM64)
+* **.NET 8.0 SDK** or later.
 
-### Build & Run
+> **💡 Quick Install via Windows Package Manager (winget):**
+> ```powershell
+> winget install Microsoft.DotNet.SDK.8
+> ```
+> *(Or manually download from [dotnet.microsoft.com/download](https://dotnet.microsoft.com/download/dotnet/8.0)).*
+
+---
+
+### 2. Build & Run
 
 1. **Clone the repository:**
    ```powershell
@@ -230,9 +237,14 @@ Profiles are stored in `%APPDATA%\WorkspaceSwitcher\Profiles\<ProfileName>.json`
    dotnet build WorkspaceSwitcher.sln -c Release
    ```
 
-3. **Launch the WPF Application:**
+3. **Launch the WPF Dashboard & Tray Application:**
    ```powershell
    dotnet run --project src/WorkspaceSwitcher.UI
+   ```
+
+4. **(Optional) Run the Headless CLI Diagnostic Tool:**
+   ```powershell
+   dotnet run --project src/WorkspaceSwitcher.Cli
    ```
 
 ---
