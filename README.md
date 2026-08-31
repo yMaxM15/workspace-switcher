@@ -12,6 +12,15 @@
 
 [Features](#-key-features) • [Architecture](#-architecture) • [How It Works Under The Hood](#-how-it-works-under-the-hood) • [Quick Start](#-quick-start) • [Troubleshooting](#-troubleshooting--common-issues) • [Project Structure](#-project-structure)
 
+<br />
+<br />
+
+<img src="docs/assets/dashboard.png" alt="Workspace Switcher Dashboard Preview" width="850" />
+
+<br />
+
+<sub><i>Modern Cyberpunk / Indigo Glassmorphism UI with multi-monitor coordinates, real-time process icon extraction, and custom window inspection.</i></sub>
+
 </div>
 
 ---
