@@ -8,7 +8,9 @@ using WorkspaceSwitcher.UI.ViewModels;
 
 namespace WorkspaceSwitcher.UI;
 
-public partial class App : Application
+using WpfApp = System.Windows.Application;
+
+public partial class App : WpfApp
 {
     private WindowManager? _windowManager;
     private ProfileService? _profileService;
