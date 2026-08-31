@@ -30,6 +30,26 @@ public class ProfileItemViewModel : INotifyPropertyChanged
 
     public string Name => _profile.Name;
     public string Description => string.IsNullOrWhiteSpace(_profile.Description) ? "workspace" : _profile.Description;
+    
+    public string IconGlyph
+    {
+        get => string.IsNullOrWhiteSpace(_profile.IconGlyph) ? "💻" : _profile.IconGlyph;
+        set
+        {
+            if (_profile.IconGlyph != value)
+            {
+                _profile.IconGlyph = value;
+                OnPropertyChanged();
+                _onProfileUpdated?.Invoke(this);
+            }
+        }
+    }
+
+    public static IReadOnlyList<string> AvailableIcons { get; } = new[]
+    {
+        "💻", "🎮", "📚", "💼", "🎨", "🚀", "🌐", "⚙️", "🎬", "🎧", "⚡", "🔥", "🏆", "📱", "💡", "☕"
+    };
+
     public int WindowCount => _profile.Windows?.Count ?? 0;
 
     public int MonitorCount

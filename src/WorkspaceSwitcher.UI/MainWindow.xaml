@@ -93,7 +93,50 @@
                         <TextBlock Text="Description (optional)" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,5"/>
                         <TextBox Style="{StaticResource DarkGlassTextBox}" 
                                  Text="{Binding NewProfileDescription, UpdateSourceTrigger=PropertyChanged}" 
-                                 Margin="0,0,0,14"/>
+                                 Margin="0,0,0,10"/>
+
+                        <!-- Icon Picker Input -->
+                        <TextBlock Text="Choose Icon" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,5"/>
+                        <ListBox ItemsSource="{Binding AvailableIcons}" 
+                                 SelectedItem="{Binding SelectedNewIcon}" 
+                                 Background="Transparent" BorderThickness="0" Margin="0,0,0,14"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                 ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Margin" Value="0,0,5,0"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border x:Name="IconBorder" Background="#161D36" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="6" Width="28" Height="28" Cursor="Hand">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="IconBorder" Property="BorderBrush" Value="{StaticResource AccentIndigoBrush}"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter TargetName="IconBorder" Property="Background" Value="{StaticResource AccentIndigoBrush}"/>
+                                                        <Setter TargetName="IconBorder" Property="BorderBrush" Value="White"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
 
                         <!-- Capture Button -->
                         <Button Style="{StaticResource IndigoGradientButton}" 
@@ -180,7 +223,7 @@
 
                                         <!-- Left Icon Badge -->
                                         <Border Grid.Column="0" Width="32" Height="32" CornerRadius="8" Background="{Binding IconBrush}" Margin="0,0,10,0" VerticalAlignment="Center">
-                                            <TextBlock Text="💻" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding IconGlyph}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
 
                                         <!-- Center: Info -->
@@ -265,7 +308,7 @@
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                                 <Border Width="42" Height="42" CornerRadius="10" Background="{StaticResource IndigoPurpleGradient}" Margin="0,0,14,0" VerticalAlignment="Center">
-                                    <TextBlock Text="💻" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding SelectedProfile.IconGlyph, FallbackValue='💻'}" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
                                 <StackPanel VerticalAlignment="Center">
                                     <TextBlock Text="{Binding SelectedProfile.Name, FallbackValue='Select a Workspace'}" FontSize="20" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>

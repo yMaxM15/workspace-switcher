@@ -7,6 +7,7 @@ public class WorkspaceProfile
 {
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public string IconGlyph { get; set; } = "💻";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime LastModifiedAt { get; set; } = DateTime.UtcNow;
     public int DisplayCount { get; set; } = 1;

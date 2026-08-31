@@ -63,6 +63,20 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    private string _selectedNewIcon = "💻";
+
+    public string SelectedNewIcon
+    {
+        get => _selectedNewIcon;
+        set
+        {
+            _selectedNewIcon = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public IReadOnlyList<string> AvailableIcons => ProfileItemViewModel.AvailableIcons;
+
     public string StatusMessage
     {
         get => _statusMessage;
@@ -158,11 +172,12 @@ public class MainViewModel : INotifyPropertyChanged
 
         try
         {
-            var profile = _windowManager.CaptureWorkspace(NewProfileName.Trim(), NewProfileDescription.Trim());
+            var profile = _windowManager.CaptureWorkspace(NewProfileName.Trim(), NewProfileDescription.Trim(), SelectedNewIcon);
             _profileService.SaveProfile(profile);
 
             NewProfileName = string.Empty;
             NewProfileDescription = string.Empty;
+            SelectedNewIcon = "💻";
 
             LoadProfiles();
             SelectedProfile = Profiles.FirstOrDefault(p => p.Name.Equals(profile.Name, StringComparison.OrdinalIgnoreCase));
