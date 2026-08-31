@@ -63,227 +63,37 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- LEFT COLUMN -->
+            <!-- LEFT COLUMN (Full-Height Workspaces List + New Modal) -->
             <Grid Grid.Column="0" Margin="0,0,16,0">
                 <Grid.RowDefinitions>
-                    <!-- Create Workspace Card -->
-                    <RowDefinition Height="Auto"/>
-                    <!-- My Workspaces List Card -->
+                    <!-- My Workspaces List Card (Full Height) -->
                     <RowDefinition Height="*"/>
                     <!-- Bottom Notice Card -->
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- CARD 1: Create or Edit Workspace -->
-                <Border Grid.Row="0" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="16" Margin="0,0,0,14">
-                    <Grid>
-                        <!-- 1A. CREATE WORKSPACE VIEW -->
-                        <StackPanel Visibility="{Binding IsEditingWorkspace, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}">
-                            <StackPanel.Style>
-                                <Style TargetType="StackPanel">
-                                    <Setter Property="Visibility" Value="Visible"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsEditingWorkspace}" Value="True">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </StackPanel.Style>
-
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
-                                <TextBlock Text="📷" FontSize="13" Foreground="{StaticResource AccentIndigoBrush}" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="Create Workspace" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                            <TextBlock Text="Capture your current window layout" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12"/>
-
-                            <!-- Workspace Name Input -->
-                            <TextBlock Text="Workspace Name" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,5"/>
-                            <TextBox Style="{StaticResource DarkGlassTextBox}" 
-                                     Text="{Binding NewProfileName, UpdateSourceTrigger=PropertyChanged}" 
-                                     Margin="0,0,0,10"/>
-
-                            <!-- Description Input -->
-                            <TextBlock Text="Description (optional)" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,5"/>
-                            <TextBox Style="{StaticResource DarkGlassTextBox}" 
-                                     Text="{Binding NewProfileDescription, UpdateSourceTrigger=PropertyChanged}" 
-                                     Margin="0,0,0,10"/>
-
-                            <!-- Icon Picker Input -->
-                            <TextBlock Text="Choose Icon" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,5"/>
-                            <ListBox ItemsSource="{Binding AvailableIcons}" 
-                                     SelectedItem="{Binding SelectedNewIcon}" 
-                                     Background="Transparent" BorderThickness="0" Margin="0,0,0,14"
-                                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                                     ScrollViewer.VerticalScrollBarVisibility="Disabled">
-                                <ListBox.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal"/>
-                                    </ItemsPanelTemplate>
-                                </ListBox.ItemsPanel>
-                                <ListBox.ItemContainerStyle>
-                                    <Style TargetType="ListBoxItem">
-                                        <Setter Property="Padding" Value="0"/>
-                                        <Setter Property="Margin" Value="0,0,5,0"/>
-                                        <Setter Property="Template">
-                                            <Setter.Value>
-                                                <ControlTemplate TargetType="ListBoxItem">
-                                                    <Border x:Name="IconBorder" Background="#161D36" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="6" Width="28" Height="28" Cursor="Hand">
-                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                    </Border>
-                                                    <ControlTemplate.Triggers>
-                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter TargetName="IconBorder" Property="BorderBrush" Value="{StaticResource AccentIndigoBrush}"/>
-                                                        </Trigger>
-                                                        <Trigger Property="IsSelected" Value="True">
-                                                            <Setter TargetName="IconBorder" Property="Background" Value="{StaticResource AccentIndigoBrush}"/>
-                                                            <Setter TargetName="IconBorder" Property="BorderBrush" Value="White"/>
-                                                        </Trigger>
-                                                    </ControlTemplate.Triggers>
-                                                </ControlTemplate>
-                                            </Setter.Value>
-                                        </Setter>
-                                    </Style>
-                                </ListBox.ItemContainerStyle>
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding}" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-
-                            <!-- Capture Button -->
-                            <Button Style="{StaticResource IndigoGradientButton}" 
-                                    Command="{Binding CaptureNewProfileCommand}">
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                    <TextBlock Text="📷" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="Capture Current Windows" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
-
-                        <!-- 1B. EDIT WORKSPACE VIEW -->
-                        <StackPanel>
-                            <StackPanel.Style>
-                                <Style TargetType="StackPanel">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsEditingWorkspace}" Value="True">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </StackPanel.Style>
-
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
-                                <TextBlock Text="✏️" FontSize="13" Foreground="{StaticResource AccentIndigoBrush}" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="Edit Workspace" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                            <TextBlock Text="Modify name, description or icon" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,12"/>
-
-                            <!-- Edit Name Input -->
-                            <TextBlock Text="Workspace Name" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,5"/>
-                            <TextBox Style="{StaticResource DarkGlassTextBox}" 
-                                     Text="{Binding EditWorkspaceName, UpdateSourceTrigger=PropertyChanged}" 
-                                     Margin="0,0,0,10"/>
-
-                            <!-- Edit Description Input -->
-                            <TextBlock Text="Description (optional)" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,5"/>
-                            <TextBox Style="{StaticResource DarkGlassTextBox}" 
-                                     Text="{Binding EditWorkspaceDescription, UpdateSourceTrigger=PropertyChanged}" 
-                                     Margin="0,0,0,10"/>
-
-                            <!-- Edit Icon Picker -->
-                            <TextBlock Text="Workspace Icon" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,5"/>
-                            <ListBox ItemsSource="{Binding AvailableIcons}" 
-                                     SelectedItem="{Binding EditWorkspaceIcon}" 
-                                     Background="Transparent" BorderThickness="0" Margin="0,0,0,14"
-                                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                                     ScrollViewer.VerticalScrollBarVisibility="Disabled">
-                                <ListBox.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal"/>
-                                    </ItemsPanelTemplate>
-                                </ListBox.ItemsPanel>
-                                <ListBox.ItemContainerStyle>
-                                    <Style TargetType="ListBoxItem">
-                                        <Setter Property="Padding" Value="0"/>
-                                        <Setter Property="Margin" Value="0,0,5,0"/>
-                                        <Setter Property="Template">
-                                            <Setter.Value>
-                                                <ControlTemplate TargetType="ListBoxItem">
-                                                    <Border x:Name="EditIconBorder" Background="#161D36" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="6" Width="28" Height="28" Cursor="Hand">
-                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                    </Border>
-                                                    <ControlTemplate.Triggers>
-                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter TargetName="EditIconBorder" Property="BorderBrush" Value="{StaticResource AccentIndigoBrush}"/>
-                                                        </Trigger>
-                                                        <Trigger Property="IsSelected" Value="True">
-                                                            <Setter TargetName="EditIconBorder" Property="Background" Value="{StaticResource AccentIndigoBrush}"/>
-                                                            <Setter TargetName="EditIconBorder" Property="BorderBrush" Value="White"/>
-                                                        </Trigger>
-                                                    </ControlTemplate.Triggers>
-                                                </ControlTemplate>
-                                            </Setter.Value>
-                                        </Setter>
-                                    </Style>
-                                </ListBox.ItemContainerStyle>
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding}" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-
-                            <!-- Save & Cancel Buttons -->
-                            <Grid Margin="0,0,0,8">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="8"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Button Grid.Column="0" Style="{StaticResource IndigoGradientButton}" 
-                                        Content="💾 Save" 
-                                        Padding="12,8"
-                                        Command="{Binding SaveEditProfileCommand}"/>
-                                <Button Grid.Column="2" Style="{StaticResource DarkSecondaryButton}" 
-                                        Content="Cancel" 
-                                        Padding="12,8"
-                                        Command="{Binding CancelEditProfileCommand}"/>
-                            </Grid>
-
-                            <!-- Overwrite Snapshot Shortcut -->
-                            <Button Style="{StaticResource DarkSecondaryButton}" 
-                                    Content="🔄 Overwrite with Current Layout" 
-                                    Padding="10,6" FontSize="11"
-                                    Command="{Binding OverwriteProfileCommand}"
-                                    CommandParameter="{Binding SelectedProfile}"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-
-                <!-- CARD 2: My Workspaces List -->
-                <Border Grid.Row="1" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="16,14" Margin="0,0,0,12">
+                <!-- CARD 1: My Workspaces List -->
+                <Border Grid.Row="0" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="16,16" Margin="0,0,0,12">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <!-- Header with count & + New -->
-                        <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <!-- Header with count & + New Button -->
+                        <Grid Grid.Row="0" Margin="0,0,0,14">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="My Workspaces" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-                                <Border Background="#1E2642" CornerRadius="8" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding TotalProfilesCount}" FontSize="10.5" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                <TextBlock Text="My Workspaces" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                <Border Background="#1E2642" CornerRadius="8" Padding="7,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding TotalProfilesCount}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}"/>
                                 </Border>
                             </StackPanel>
 
-                            <Button Style="{StaticResource DarkIconButton}" 
+                            <Button Style="{StaticResource IndigoGradientButton}" 
                                     Content="+ New" 
                                     HorizontalAlignment="Right" 
-                                    Padding="9,4" FontSize="11" FontWeight="SemiBold"
-                                    Command="{Binding PrepareNewWorkspaceCommand}"/>
+                                    Padding="14,6" FontSize="11.5" FontWeight="Bold"
+                                    Command="{Binding OpenCreateWorkspaceDialogCommand}"/>
                         </Grid>
 
                         <!-- Workspaces List -->
@@ -306,7 +116,7 @@
                                                         BorderBrush="{StaticResource CardBorderBrush}" 
                                                         BorderThickness="1" 
                                                         CornerRadius="10" 
-                                                        Padding="10,9">
+                                                        Padding="12,10">
                                                     <ContentPresenter/>
                                                 </Border>
                                                 <ControlTemplate.Triggers>
@@ -335,8 +145,8 @@
                                         </Grid.ColumnDefinitions>
 
                                         <!-- Left Icon Badge -->
-                                        <Border Grid.Column="0" Width="32" Height="32" CornerRadius="8" Background="{Binding IconBrush}" Margin="0,0,10,0" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding IconGlyph}" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8" Background="{Binding IconBrush}" Margin="0,0,10,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding IconGlyph}" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
 
                                         <!-- Center: Info -->
@@ -353,7 +163,7 @@
                                                 <TextBlock Text="{Binding MonitorCount, StringFormat='{}🖥 {0}'}" FontSize="10" Foreground="{StaticResource TextMutedBrush}"/>
                                             </StackPanel>
 
-                                            <!-- Mini Action Buttons (Apply, Overwrite, Delete) -->
+                                            <!-- Mini Action Buttons (Apply, Edit Modal, Delete) -->
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                                 <Button Style="{StaticResource DarkIconButton}" 
                                                         Content="▶" 
@@ -365,7 +175,7 @@
                                                         Content="✏️" 
                                                         Padding="5,3" FontSize="10" Margin="0,0,4,0"
                                                         ToolTip="Edit workspace"
-                                                        Command="{Binding DataContext.StartEditProfileCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        Command="{Binding DataContext.OpenEditWorkspaceDialogCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding}"/>
                                                 <Button Style="{StaticResource DarkIconButton}" 
                                                         Content="🗑️" 
@@ -382,8 +192,8 @@
                     </Grid>
                 </Border>
 
-                <!-- CARD 3: Bottom Notice Card -->
-                <Border Grid.Row="2" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="14,10">
+                <!-- CARD 2: Bottom Notice Card -->
+                <Border Grid.Row="1" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="12" Padding="14,10">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>

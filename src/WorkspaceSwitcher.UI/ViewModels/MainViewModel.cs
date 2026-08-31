@@ -8,6 +8,7 @@ using WorkspaceSwitcher.Core;
 using WorkspaceSwitcher.Core.Hotkeys;
 using WorkspaceSwitcher.Core.Models;
 using WorkspaceSwitcher.Core.Services;
+using WorkspaceSwitcher.UI.Views;
 
 namespace WorkspaceSwitcher.UI.ViewModels;
 
@@ -19,19 +20,9 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly HotkeyManager _hotkeyManager;
 
     private ProfileItemViewModel? _selectedProfile;
-    private string _newProfileName = string.Empty;
-    private string _newProfileDescription = string.Empty;
-    private string _selectedNewIcon = "💻";
     private string _statusMessage = "Workspace Switcher is running in the background";
     private bool _autoLaunchMissingApps;
     private bool _minimizeToTrayOnClose;
-
-    // Workspace Editing State
-    private bool _isEditingWorkspace;
-    private ProfileItemViewModel? _editingProfile;
-    private string _editWorkspaceName = string.Empty;
-    private string _editWorkspaceDescription = string.Empty;
-    private string _editWorkspaceIcon = "💻";
 
     public ObservableCollection<ProfileItemViewModel> Profiles { get; } = new();
 
@@ -50,38 +41,6 @@ public class MainViewModel : INotifyPropertyChanged
     public bool HasSelectedProfile => SelectedProfile != null;
 
     public ObservableCollection<WindowItemViewModel>? SelectedProfileWindowItems => SelectedProfile?.WindowItems;
-
-    public string NewProfileName
-    {
-        get => _newProfileName;
-        set
-        {
-            _newProfileName = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public string NewProfileDescription
-    {
-        get => _newProfileDescription;
-        set
-        {
-            _newProfileDescription = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public string SelectedNewIcon
-    {
-        get => _selectedNewIcon;
-        set
-        {
-            _selectedNewIcon = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public IReadOnlyList<string> AvailableIcons => ProfileItemViewModel.AvailableIcons;
 
     public string StatusMessage
     {
@@ -117,60 +76,16 @@ public class MainViewModel : INotifyPropertyChanged
 
     public int TotalProfilesCount => Profiles.Count;
 
-    // Editing Properties
-    public bool IsEditingWorkspace
-    {
-        get => _isEditingWorkspace;
-        set
-        {
-            _isEditingWorkspace = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public string EditWorkspaceName
-    {
-        get => _editWorkspaceName;
-        set
-        {
-            _editWorkspaceName = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public string EditWorkspaceDescription
-    {
-        get => _editWorkspaceDescription;
-        set
-        {
-            _editWorkspaceDescription = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public string EditWorkspaceIcon
-    {
-        get => _editWorkspaceIcon;
-        set
-        {
-            _editWorkspaceIcon = value;
-            OnPropertyChanged();
-        }
-    }
-
     public IProfileService ProfileService => _profileService;
     public WindowManager WindowManager => _windowManager;
 
     // Commands
-    public ICommand CaptureNewProfileCommand { get; }
-    public ICommand PrepareNewWorkspaceCommand { get; }
+    public ICommand OpenCreateWorkspaceDialogCommand { get; }
+    public ICommand OpenEditWorkspaceDialogCommand { get; }
     public ICommand ApplyProfileCommand { get; }
     public ICommand OverwriteProfileCommand { get; }
     public ICommand DeleteProfileCommand { get; }
     public ICommand RefreshProfilesCommand { get; }
-    public ICommand StartEditProfileCommand { get; }
-    public ICommand SaveEditProfileCommand { get; }
-    public ICommand CancelEditProfileCommand { get; }
 
     public MainViewModel(
         WindowManager windowManager,
@@ -187,16 +102,12 @@ public class MainViewModel : INotifyPropertyChanged
         _autoLaunchMissingApps = settings.AutoLaunchMissingApps;
         _minimizeToTrayOnClose = settings.MinimizeToTrayOnClose;
 
-        CaptureNewProfileCommand = new RelayCommand(CaptureNewProfile, () => !string.IsNullOrWhiteSpace(NewProfileName));
-        PrepareNewWorkspaceCommand = new RelayCommand(PrepareNewWorkspace);
+        OpenCreateWorkspaceDialogCommand = new RelayCommand(OpenCreateWorkspaceDialog);
+        OpenEditWorkspaceDialogCommand = new RelayCommand<ProfileItemViewModel>(OpenEditWorkspaceDialog);
         ApplyProfileCommand = new RelayCommand<ProfileItemViewModel>(ApplyProfile);
         OverwriteProfileCommand = new RelayCommand<ProfileItemViewModel>(OverwriteProfile);
         DeleteProfileCommand = new RelayCommand<ProfileItemViewModel>(DeleteProfile);
         RefreshProfilesCommand = new RelayCommand(LoadProfiles);
-
-        StartEditProfileCommand = new RelayCommand<ProfileItemViewModel>(StartEditProfile);
-        SaveEditProfileCommand = new RelayCommand(SaveEditProfile, () => !string.IsNullOrWhiteSpace(EditWorkspaceName));
-        CancelEditProfileCommand = new RelayCommand(() => IsEditingWorkspace = false);
 
         _hotkeyManager.HotKeyPressed += OnHotKeyPressed;
 
@@ -222,84 +133,74 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    public void PrepareNewWorkspace()
+    public void OpenCreateWorkspaceDialog()
     {
-        NewProfileName = string.Empty;
-        NewProfileDescription = string.Empty;
-        SelectedNewIcon = "💻";
-        IsEditingWorkspace = false;
-        StatusMessage = "Enter workspace details and click 'Capture Current Windows'.";
-    }
-
-    public void CaptureNewProfile()
-    {
-        if (string.IsNullOrWhiteSpace(NewProfileName)) return;
-
-        try
+        var owner = App.Current?.MainWindow;
+        var dlg = new WorkspaceDialog(isEditMode: false)
         {
-            var profile = _windowManager.CaptureWorkspace(NewProfileName.Trim(), NewProfileDescription.Trim(), SelectedNewIcon);
-            _profileService.SaveProfile(profile);
+            Owner = owner
+        };
 
-            NewProfileName = string.Empty;
-            NewProfileDescription = string.Empty;
-            SelectedNewIcon = "💻";
-
-            LoadProfiles();
-            SelectedProfile = Profiles.FirstOrDefault(p => p.Name.Equals(profile.Name, StringComparison.OrdinalIgnoreCase));
-            RegisterDefaultHotkeys();
-
-            StatusMessage = $"Workspace '{profile.Name}' created with {profile.Windows.Count} window(s)!";
-        }
-        catch (Exception ex)
+        if (dlg.ShowDialog() == true)
         {
-            StatusMessage = $"Error capturing profile: {ex.Message}";
+            try
+            {
+                var profile = _windowManager.CaptureWorkspace(dlg.WorkspaceName, dlg.WorkspaceDescription, dlg.WorkspaceIcon);
+                _profileService.SaveProfile(profile);
+
+                LoadProfiles();
+                SelectedProfile = Profiles.FirstOrDefault(p => p.Name.Equals(profile.Name, StringComparison.OrdinalIgnoreCase));
+                RegisterDefaultHotkeys();
+
+                StatusMessage = $"Workspace '{profile.Name}' captured with {profile.Windows.Count} window(s)!";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Error capturing workspace: {ex.Message}";
+            }
         }
     }
 
-    public void StartEditProfile(ProfileItemViewModel? item)
+    public void OpenEditWorkspaceDialog(ProfileItemViewModel? item)
     {
         var target = item ?? SelectedProfile;
         if (target == null) return;
 
-        _editingProfile = target;
-        EditWorkspaceName = target.Name;
-        EditWorkspaceDescription = target.Description;
-        EditWorkspaceIcon = target.IconGlyph;
-        IsEditingWorkspace = true;
-        StatusMessage = $"Editing workspace '{target.Name}'...";
-    }
-
-    public void SaveEditProfile()
-    {
-        if (_editingProfile == null || string.IsNullOrWhiteSpace(EditWorkspaceName)) return;
-
-        try
+        var owner = App.Current?.MainWindow;
+        var dlg = new WorkspaceDialog(target.Name, target.Description, target.IconGlyph, isEditMode: true)
         {
-            string oldName = _editingProfile.Name;
-            string newName = EditWorkspaceName.Trim();
+            Owner = owner
+        };
 
-            _editingProfile.Profile.Description = EditWorkspaceDescription.Trim();
-            _editingProfile.Profile.IconGlyph = EditWorkspaceIcon;
-
-            if (!string.Equals(oldName, newName, StringComparison.OrdinalIgnoreCase))
+        if (dlg.ShowDialog() == true)
+        {
+            try
             {
-                _profileService.DeleteProfile(oldName);
-                _editingProfile.Profile.Name = newName;
+                string oldName = target.Name;
+                string newName = dlg.WorkspaceName;
+
+                target.Profile.Description = dlg.WorkspaceDescription;
+                target.Profile.IconGlyph = dlg.WorkspaceIcon;
+
+                if (!string.Equals(oldName, newName, StringComparison.OrdinalIgnoreCase))
+                {
+                    _profileService.DeleteProfile(oldName);
+                    target.Profile.Name = newName;
+                }
+
+                _profileService.SaveProfile(target.Profile);
+                target.NotifyAll();
+
+                LoadProfiles();
+                SelectedProfile = Profiles.FirstOrDefault(p => p.Name.Equals(newName, StringComparison.OrdinalIgnoreCase));
+                RegisterDefaultHotkeys();
+
+                StatusMessage = $"Workspace '{newName}' updated successfully.";
             }
-
-            _profileService.SaveProfile(_editingProfile.Profile);
-            _editingProfile.NotifyAll();
-
-            IsEditingWorkspace = false;
-            LoadProfiles();
-            SelectedProfile = Profiles.FirstOrDefault(p => p.Name.Equals(newName, StringComparison.OrdinalIgnoreCase));
-            RegisterDefaultHotkeys();
-
-            StatusMessage = $"Workspace '{newName}' updated successfully.";
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Error saving workspace: {ex.Message}";
+            catch (Exception ex)
+            {
+                StatusMessage = $"Error updating workspace: {ex.Message}";
+            }
         }
     }
 
