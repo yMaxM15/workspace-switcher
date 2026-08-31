@@ -10,7 +10,7 @@
 
 **A high-performance, native Windows utility to snapshot, manage, and instantly restore multi-monitor window layouts and application workspaces via global hotkeys and system tray.**
 
-[Features](#-key-features) • [Architecture](#-architecture) • [How It Works Under The Hood](#-how-it-works-under-the-hood) • [Quick Start](#-quick-start) • [Project Structure](#-project-structure)
+[Features](#-key-features) • [Architecture](#-architecture) • [How It Works Under The Hood](#-how-it-works-under-the-hood) • [Quick Start](#-quick-start) • [Troubleshooting](#-troubleshooting--common-issues) • [Project Structure](#-project-structure)
 
 </div>
 
@@ -302,6 +302,50 @@ workspace-switcher/
 | <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>5</kbd> | Restore 5th saved workspace profile |
 
 *(Hotkeys can be customized and mapped dynamically in the settings).*
+
+---
+
+## 🛠️ Troubleshooting & Common Issues
+
+### 1. `0x800711C7` or Win32Exception 4551: *"An application control policy has blocked this file"* / *"Eine Anwendungssteuerungsrichtlinie hat diese Datei blockiert"*
+
+**Cause:** On Windows 11, **Smart App Control (SAC)** or **Windows Defender Application Control (WDAC)** blocks newly compiled local `.exe` and `.dll` binaries because they do not have a commercial Authenticode code-signing certificate.
+
+**Solutions:**
+
+* **Option A: Enable Windows Developer Mode (Recommended)**
+  1. Press <kbd>Win</kbd> + <kbd>R</kbd>, enter `ms-settings:developers`, and press <kbd>Enter</kbd>.
+  2. Switch **Developer Mode** (*Entwicklermodus*) to **On** and confirm with *Yes*.
+  *(This allows Windows to execute and debug locally compiled .NET applications).*
+
+* **Option B: Adjust Smart App Control**
+  1. Press <kbd>Win</kbd> + <kbd>R</kbd>, enter `windowsdefender://appbrowser`, and press <kbd>Enter</kbd>.
+  2. Click on **Smart App Control Settings** (*Einstellungen für die Intelligente App-Steuerung*).
+  3. Set the mode to **Off** (*Aus*) to permit local unsigned developer binaries.
+
+* **Option C: Unblock Files in PowerShell**
+  If files were cloned or moved within cloud-synced folders (e.g. OneDrive), clear the Mark-of-the-Web zone identifier:
+  ```powershell
+  Get-ChildItem -Recurse | Unblock-File
+  ```
+
+---
+
+### 2. Windows SmartScreen: *"Windows protected your PC"* / *"Der Computer wurde durch Windows geschützt"*
+
+**Cause:** Standard Windows SmartScreen warning when launching any freshly compiled, unsigned open-source utility.
+
+**Solution:**
+Click on **"More info"** (*Weitere Informationen*) ➔ **"Run anyway"** (*Trotzdem ausführen*).
+
+---
+
+### 3. Global Hotkey Already in Use
+
+**Cause:** If shortcuts like <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>1</kbd> fail to trigger, another background utility (e.g. NVIDIA GeForce Experience, AMD Adrenalin, or Intel Graphics Command Center) may have bound that shortcut first.
+
+**Solution:**
+Customize hotkey combinations in the dashboard settings or release the shortcut in the conflicting software.
 
 ---
 
