@@ -33,8 +33,8 @@
 
             <!-- Brand Logo + Title -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                <Border Width="38" Height="38" CornerRadius="10" Background="{StaticResource IndigoPurpleGradient}" Margin="0,0,12,0">
-                    <TextBlock Text="🪟" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Border Width="38" Height="38" CornerRadius="10" Background="#11162A" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" Margin="0,0,12,0">
+                    <Image Source="app.ico" Width="28" Height="28" HorizontalAlignment="Center" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
                 </Border>
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="Workspace Switcher" FontSize="17" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
