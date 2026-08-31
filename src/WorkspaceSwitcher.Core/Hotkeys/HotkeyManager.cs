@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using System.Threading;
 using WorkspaceSwitcher.Core.Native;
 
@@ -16,10 +15,8 @@ public class HotkeyManager : IDisposable
     private readonly ConcurrentDictionary<int, HotKeyBinding> _bindings = new();
     private readonly ConcurrentQueue<Action> _workQueue = new();
 
-    private IntPtr _hWnd = IntPtr.Zero;
-    private NativeMethods.WndProc? _wndProcDelegate;
+    private uint _threadId;
     private bool _disposed;
-    private const string WindowClassName = "WorkspaceSwitcher_HotkeyWindow";
 
     public event EventHandler<HotKeyEventArgs>? HotKeyPressed;
 
@@ -60,12 +57,18 @@ public class HotkeyManager : IDisposable
 
         EnqueueWork(() =>
         {
-            success = NativeMethods.RegisterHotKey(_hWnd, id, (uint)modifiers, virtualKey);
-            if (success)
+            try
             {
-                _bindings[id] = binding;
+                success = NativeMethods.RegisterHotKey(IntPtr.Zero, id, (uint)modifiers, virtualKey);
+                if (success)
+                {
+                    _bindings[id] = binding;
+                }
             }
-            waitHandle.Set();
+            finally
+            {
+                waitHandle.Set();
+            }
         });
 
         waitHandle.Wait(TimeSpan.FromSeconds(2));
@@ -91,8 +94,14 @@ public class HotkeyManager : IDisposable
 
         EnqueueWork(() =>
         {
-            success = NativeMethods.UnregisterHotKey(_hWnd, id);
-            waitHandle.Set();
+            try
+            {
+                success = NativeMethods.UnregisterHotKey(IntPtr.Zero, id);
+            }
+            finally
+            {
+                waitHandle.Set();
+            }
         });
 
         waitHandle.Wait(TimeSpan.FromSeconds(2));
@@ -116,65 +125,27 @@ public class HotkeyManager : IDisposable
         if (_disposed) return;
         _workQueue.Enqueue(action);
 
-        if (_hWnd != IntPtr.Zero)
+        if (_threadId != 0)
         {
-            NativeMethods.PostMessage(_hWnd, NativeMethods.WM_USER, IntPtr.Zero, IntPtr.Zero);
+            NativeMethods.PostThreadMessage(_threadId, NativeMethods.WM_USER, IntPtr.Zero, IntPtr.Zero);
         }
     }
 
     private void RunMessageLoop()
     {
-        try
+        _threadId = NativeMethods.GetCurrentThreadId();
+
+        // Force creation of the message queue for this thread
+        NativeMethods.MSG dummyMsg;
+        NativeMethods.PeekMessage(out dummyMsg, IntPtr.Zero, 0, 0, 0);
+
+        _initializedEvent.Set();
+
+        // Win32 Thread Message Loop
+        while (!_disposed && NativeMethods.GetMessage(out var msg, IntPtr.Zero, 0, 0) > 0)
         {
-            _wndProcDelegate = CustomWndProc;
-
-            var wndClass = new NativeMethods.WNDCLASSEX
+            if (msg.message == NativeMethods.WM_USER)
             {
-                cbSize = (uint)Marshal.SizeOf<NativeMethods.WNDCLASSEX>(),
-                lpfnWndProc = _wndProcDelegate,
-                hInstance = NativeMethods.GetModuleHandle(null),
-                lpszClassName = WindowClassName
-            };
-
-            NativeMethods.RegisterClassEx(ref wndClass);
-
-            _hWnd = NativeMethods.CreateWindowEx(
-                0,
-                WindowClassName,
-                "WorkspaceSwitcher_MessageWindow",
-                0,
-                0, 0, 0, 0,
-                NativeMethods.HWND_MESSAGE,
-                IntPtr.Zero,
-                wndClass.hInstance,
-                IntPtr.Zero
-            );
-
-            _initializedEvent.Set();
-
-            // Win32 Message Pump
-            while (!_disposed && NativeMethods.GetMessage(out var msg, IntPtr.Zero, 0, 0) > 0)
-            {
-                NativeMethods.TranslateMessage(ref msg);
-                NativeMethods.DispatchMessage(ref msg);
-            }
-        }
-        finally
-        {
-            if (_hWnd != IntPtr.Zero)
-            {
-                NativeMethods.DestroyWindow(_hWnd);
-                _hWnd = IntPtr.Zero;
-            }
-            NativeMethods.UnregisterClass(WindowClassName, NativeMethods.GetModuleHandle(null));
-        }
-    }
-
-    private IntPtr CustomWndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
-    {
-        switch (msg)
-        {
-            case NativeMethods.WM_USER:
                 while (_workQueue.TryDequeue(out var action))
                 {
                     try
@@ -186,12 +157,12 @@ public class HotkeyManager : IDisposable
                         // Ignore work queue errors
                     }
                 }
-                return IntPtr.Zero;
-
-            case NativeMethods.WM_HOTKEY:
-                int id = wParam.ToInt32();
-                uint vk = (uint)(((ulong)lParam >> 16) & 0xFFFF);
-                var modifiers = (KeyModifiers)((uint)lParam & 0xFFFF);
+            }
+            else if (msg.message == NativeMethods.WM_HOTKEY)
+            {
+                int id = msg.wParam.ToInt32();
+                uint vk = (uint)(((ulong)msg.lParam >> 16) & 0xFFFF);
+                var modifiers = (KeyModifiers)((uint)msg.lParam & 0xFFFF);
 
                 _bindings.TryGetValue(id, out var binding);
 
@@ -203,17 +174,16 @@ public class HotkeyManager : IDisposable
                     }
                     catch
                     {
-                        // Protect message loop from subscriber exceptions
+                        // Protect from subscriber exceptions
                     }
                 });
-                return IntPtr.Zero;
-
-            case NativeMethods.WM_DESTROY:
-                NativeMethods.PostQuitMessage(0);
-                return IntPtr.Zero;
+            }
+            else
+            {
+                NativeMethods.TranslateMessage(ref msg);
+                NativeMethods.DispatchMessage(ref msg);
+            }
         }
-
-        return NativeMethods.DefWindowProc(hWnd, msg, wParam, lParam);
     }
 
     public void Dispose()
@@ -223,9 +193,9 @@ public class HotkeyManager : IDisposable
 
         UnregisterAll();
 
-        if (_hWnd != IntPtr.Zero)
+        if (_threadId != 0)
         {
-            NativeMethods.PostMessage(_hWnd, NativeMethods.WM_DESTROY, IntPtr.Zero, IntPtr.Zero);
+            NativeMethods.PostThreadMessage(_threadId, NativeMethods.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
         }
 
         _messageLoopThread.Join(TimeSpan.FromSeconds(2));

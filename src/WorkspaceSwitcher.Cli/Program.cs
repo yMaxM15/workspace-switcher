@@ -73,14 +73,22 @@ catch (Exception ex)
     Console.ResetColor();
 }
 
-while (true)
+if (!Console.IsInputRedirected)
 {
-    if (Console.KeyAvailable)
+    while (true)
     {
-        var key = Console.ReadKey(true);
-        if (key.Key == ConsoleKey.Q) break;
+        if (Console.KeyAvailable)
+        {
+            var key = Console.ReadKey(true);
+            if (key.Key == ConsoleKey.Q) break;
+        }
+        Thread.Sleep(100);
     }
-    Thread.Sleep(100);
+}
+else
+{
+    Console.WriteLine("\n[INFO] Running in non-interactive mode. Press Ctrl+C to terminate.");
+    Thread.Sleep(2000);
 }
 
 Console.WriteLine("\nShutting down HotkeyManager...");
