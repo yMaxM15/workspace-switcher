@@ -1,7 +1,7 @@
 <Application x:Class="WorkspaceSwitcher.UI.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             ShutdownMode="OnExplicitShutdown">
+             StartupUri="MainWindow.xaml">
     <Application.Resources>
         <!-- Dark Mode Color Palette -->
         <Color x:Key="BgDark">#121212</Color>
