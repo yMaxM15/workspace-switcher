@@ -82,7 +82,7 @@ public class TrayIconService : IDisposable
                     var profile = _profileService.LoadProfile(name);
                     if (profile != null)
                     {
-                        int restored = _windowManager.RestoreWorkspace(profile, launchIfNotRunning: true);
+                        int restored = _windowManager.RestoreWorkspace(profile, launchIfNotRunning: false);
                         ShowNotification("Profile Applied", $"Restored layout '{name}' ({restored} windows).");
                     }
                 };

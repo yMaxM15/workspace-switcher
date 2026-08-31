@@ -93,7 +93,14 @@ public class ProfileService : IProfileService
             return null;
 
         string json = File.ReadAllText(filePath);
-        return JsonSerializer.Deserialize<WorkspaceProfile>(json, _jsonOptions);
+        var profile = JsonSerializer.Deserialize<WorkspaceProfile>(json, _jsonOptions);
+        if (profile?.Windows != null)
+        {
+            profile.Windows.RemoveAll(w => string.Equals(w.ProcessName, "WorkspaceSwitcher.UI", StringComparison.OrdinalIgnoreCase) ||
+                                          string.Equals(w.ProcessName, "WorkspaceSwitcher", StringComparison.OrdinalIgnoreCase) ||
+                                          string.Equals(w.ProcessName, "WorkspaceSwitcher.Cli", StringComparison.OrdinalIgnoreCase));
+        }
+        return profile;
     }
 
     public async Task<WorkspaceProfile?> LoadProfileAsync(string profileName)
@@ -103,7 +110,14 @@ public class ProfileService : IProfileService
             return null;
 
         await using var stream = File.OpenRead(filePath);
-        return await JsonSerializer.DeserializeAsync<WorkspaceProfile>(stream, _jsonOptions);
+        var profile = await JsonSerializer.DeserializeAsync<WorkspaceProfile>(stream, _jsonOptions);
+        if (profile?.Windows != null)
+        {
+            profile.Windows.RemoveAll(w => string.Equals(w.ProcessName, "WorkspaceSwitcher.UI", StringComparison.OrdinalIgnoreCase) ||
+                                          string.Equals(w.ProcessName, "WorkspaceSwitcher", StringComparison.OrdinalIgnoreCase) ||
+                                          string.Equals(w.ProcessName, "WorkspaceSwitcher.Cli", StringComparison.OrdinalIgnoreCase));
+        }
+        return profile;
     }
 
     public IReadOnlyList<string> GetProfileNames()

@@ -100,6 +100,11 @@ public class WindowManager
 
         foreach (var savedWindow in profile.Windows)
         {
+            if (IgnoredProcesses.Contains(savedWindow.ProcessName))
+            {
+                continue; // Never reposition or launch ignored/own processes
+            }
+
             var target = FindBestMatch(savedWindow, currentWindows, matchedHandles);
 
             if (target != null)
@@ -113,17 +118,21 @@ public class WindowManager
             }
             else if (launchIfNotRunning && !string.IsNullOrWhiteSpace(savedWindow.ExecutablePath) && File.Exists(savedWindow.ExecutablePath))
             {
-                try
+                // Only launch if not already running any instance
+                if (Process.GetProcessesByName(savedWindow.ProcessName).Length == 0)
                 {
-                    Process.Start(new ProcessStartInfo
+                    try
                     {
-                        FileName = savedWindow.ExecutablePath,
-                        UseShellExecute = true
-                    });
-                }
-                catch
-                {
-                    // Ignore launch failures
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = savedWindow.ExecutablePath,
+                            UseShellExecute = true
+                        });
+                    }
+                    catch
+                    {
+                        // Ignore launch failures
+                    }
                 }
             }
         }

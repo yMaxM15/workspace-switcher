@@ -5,7 +5,7 @@ namespace WorkspaceSwitcher.Core.Models;
 
 public class AppSettings
 {
-    public bool AutoLaunchMissingApps { get; set; } = true;
+    public bool AutoLaunchMissingApps { get; set; } = false;
     public bool MinimizeToTrayOnClose { get; set; } = true;
     public bool StartWithWindows { get; set; } = false;
     public string? CustomProfilesDirectory { get; set; }
