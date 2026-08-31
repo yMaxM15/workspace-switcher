@@ -8,18 +8,18 @@
 ![Architecture](https://img.shields.io/badge/Architecture-x64%20%7C%20ARM64-lightgrey?style=for-the-badge)
 ![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen.svg?style=for-the-badge)
 
-**A high-performance, native Windows utility to snapshot, manage, and instantly restore multi-monitor window layouts and application workspaces via global hotkeys and system tray.**
+**A high-performance, native Windows utility to snapshot, customize, and instantly restore multi-monitor window layouts and application workspaces via global hotkeys, standalone executable, and system tray.**
 
 [Features](#-key-features) • [Architecture](#-architecture) • [How It Works Under The Hood](#-how-it-works-under-the-hood) • [Quick Start](#-quick-start) • [Troubleshooting](#-troubleshooting--common-issues) • [Project Structure](#-project-structure)
 
 <br />
 <br />
 
-<img src="docs/assets/dashboard.png" alt="Workspace Switcher Dashboard Preview" width="850" />
+<img src="docs/assets/dashboard.png" alt="Workspace Switcher Dashboard Preview" width="880" />
 
 <br />
 
-<sub><i>Modern Cyberpunk / Indigo Glassmorphism UI with multi-monitor coordinates, real-time process icon extraction, and custom window inspection.</i></sub>
+<sub><i>Modern Cyberpunk / Indigo Glassmorphism UI with multi-monitor coordinates, native executable process icon extraction, modal workspace creator, and real-time window inspection.</i></sub>
 
 </div>
 
@@ -37,12 +37,17 @@ When switching between multi-monitor setups, docking stations, unplugging extern
 
 ## ✨ Key Features
 
-* 📸 **Intelligent Window Snapshots:** Automatically discovers all user-facing application windows while filtering out invisible system services, desktop shells, and background UWP apps.
-* ⚡ **Pixel-Perfect Restoration:** Restores exact window coordinates and states (`Maximized`, `Normal`, `Minimized`) across single- and multi-monitor setups without visual distortions.
-* 🎛️ **Interactive Window Customization:** Click on any window card to expand the customization drawer — change target states (`Normal`, `Maximized`, `Minimized`), reassign to specific displays (`Monitor 1`, `Monitor 2`, `Monitor 3`), edit pixel coordinates, or exclude windows with instant auto-save.
-* ⌨️ **Standalone Global Hotkey Dispatcher:** Dedicated Win32 message-only thread (`HWND_MESSAGE`) enables low-latency global shortcuts (`Ctrl+Alt+1..5`) without blocking or relying on the GUI thread.
-* 🎨 **Cyberpunk / Indigo Glassmorphism UI:** Modern Fluent-inspired dark interface with rich extracted app icons, relative timestamps, monitor badges, and smooth iOS-style toggle switches.
-* 🪟 **System Tray Quick-Switch:** Minimal footprint tray icon with a dynamic context menu for 1-click workspace switching and snapshot capture.
+* 📸 **Intelligent Multi-Monitor Snapshots:** Automatically discovers all user-facing application windows across all connected displays while filtering out invisible system services, desktop shells, and suspended UWP apps.
+* ⚡ **Pixel-Perfect Restoration:** Restores exact window coordinates and states (`Maximized`, `Normal`, `Minimized`) across single- and multi-monitor setups without coordinate distortion or window borders glitches.
+* 🎨 **Dedicated Workspace Creation & Edit Modal:** Click **`+ New`** or the **`✏️` Edit** button on any workspace to open a centered Dark Glassmorphism dialog where you can rename profiles, edit descriptions, and choose from a 16-icon glyph palette (`💻`, `🎮`, `📚`, `💼`, `🎨`, `🚀`, `🌐`, `⚙️`, `🎬`, `🎧`, `⚡`, `🔥`, `🏆`, `📱`, `💡`, `☕`).
+* 🎛️ **Interactive Window Customization Drawer:** Click on any window card to expand its detailed inspector:
+  * **Target Window State:** Set to `Normal`, `Maximized`, or `Minimized`.
+  * **Target Monitor:** Shift the window to `Monitor 1`, `Monitor 2`, or `Monitor 3` with automatic pixel offset recalculation.
+  * **Pixel Coordinates:** Fine-tune `X`, `Y`, `Width`, and `Height` parameters.
+  * **Exclusion / Deletion:** Remove specific windows from the workspace with instant reactive auto-save.
+* 🖼️ **Native High-Res Executable Icon Extraction:** Automatically extracts and renders the authentic high-resolution application icon from each process's `.exe` on disk with concurrent memory caching.
+* ⌨️ **Standalone Global Hotkey Dispatcher:** Dedicated Win32 message-only thread (`HWND_MESSAGE`) enables zero-latency global shortcuts (`Ctrl+Alt+1..5`) without blocking or relying on the GUI thread.
+* 🪟 **System Tray Quick-Switch & 1-Click `.exe` Launch:** Runs cleanly in the background with a system tray icon, auto-minimizaton, and single-file portable release distribution (`publish/WorkspaceSwitcher.UI.exe`).
 * 🚀 **Auto-Launch Missing Apps:** Optionally launches closed applications using their saved disk executable paths during layout restoration.
 * 🛡️ **Zero-Corruption Persistence:** Profiles are stored as human-readable JSON files in `%APPDATA%\WorkspaceSwitcher\Profiles` with atomic file replace mechanics.
 
@@ -56,11 +61,14 @@ The application is structured into modular layers, separating low-level Win32 P/
 graph TD
     subgraph UI ["Presentation Layer (WPF / MVVM)"]
         MW[MainWindow Dashboard]
+        WD[WorkspaceDialog Modal]
         TI[TrayIconService]
+        IH[IconHelper - Native Cache]
         VM[MainViewModel]
     end
 
     subgraph Services ["Core Services & State"]
+        MS[MonitorService - EnumDisplayMonitors]
         PS[ProfileService - JSON Atomic I/O]
         SS[SettingsService - App Config]
     end
@@ -77,9 +85,12 @@ graph TD
     end
 
     MW --> VM
+    WD --> VM
     TI --> VM
+    MW --> IH
     VM --> PS
     VM --> SS
+    VM --> MS
     VM --> WM
     VM --> HM
     PS --> WM
@@ -97,24 +108,28 @@ graph TD
 Enumerating windows naively using `IsWindowVisible` yields dozens of invisible background windows, Cortana/Search hosts, desktop handles, and suspended UWP processes. `WindowManager` implements a strict 5-stage validation pipeline:
 
 ```csharp
-public static bool IsValidAppWindow(IntPtr hWnd, IntPtr shellHwnd)
+public static bool IsValidAppWindow(IntPtr hWnd, IntPtr shellHwnd, int currentProcessId)
 {
     if (hWnd == IntPtr.Zero || hWnd == shellHwnd) return false;
     if (!NativeMethods.IsWindowVisible(hWnd)) return false;
 
-    // 1. Filter out cloaked windows (suspended UWP apps & other virtual desktops)
+    // 1. Exclude our own WorkspaceSwitcher application windows
+    NativeMethods.GetWindowThreadProcessId(hWnd, out int processId);
+    if (processId == currentProcessId) return false;
+
+    // 2. Filter out cloaked windows (suspended UWP apps & virtual desktop ghosts)
     int cloakedVal = 0;
     int hr = NativeMethods.DwmGetWindowAttribute(hWnd, DWMWA_CLOAKED, out cloakedVal, sizeof(int));
     if (hr == 0 && cloakedVal != 0) return false;
 
-    // 2. Reject empty title windows (background helpers)
+    // 3. Reject empty title windows (background helpers)
     if (NativeMethods.GetWindowTextLength(hWnd) == 0) return false;
 
-    // 3. Reject ToolWindows (floating popups/toolbars) unless explicitly AppWindow
+    // 4. Reject ToolWindows unless explicitly AppWindow
     long exStyle = NativeMethods.GetWindowLongPtr(hWnd, GWL_EXSTYLE).ToInt64();
     if ((exStyle & WS_EX_TOOLWINDOW) != 0 && (exStyle & WS_EX_APPWINDOW) == 0) return false;
 
-    // 4. Blacklist Shell and System Class Names (Progman, WorkerW, Shell_TrayWnd)
+    // 5. Blacklist Shell and System Class Names (Progman, WorkerW, Shell_TrayWnd)
     var classSb = new StringBuilder(256);
     NativeMethods.GetClassName(hWnd, classSb, classSb.Capacity);
     if (IgnoredClasses.Contains(classSb.ToString())) return false;
@@ -196,8 +211,9 @@ Profiles are stored in `%APPDATA%\WorkspaceSwitcher\Profiles\<ProfileName>.json`
 {
   "name": "Coding",
   "description": "Dual monitor development setup",
+  "iconGlyph": "💻",
   "createdAt": "2026-08-31T17:34:00Z",
-  "lastModifiedAt": "2026-08-31T17:38:00Z",
+  "lastModifiedAt": "2026-08-31T21:40:00Z",
   "displayCount": 2,
   "windows": [
     {
@@ -222,9 +238,9 @@ Profiles are stored in `%APPDATA%\WorkspaceSwitcher\Profiles\<ProfileName>.json`
 
 ## 🚀 Quick Start
 
-### 1. Prerequisites & Installation
+### 1. Prerequisites
 * **Windows 10 / 11** (x64 / ARM64)
-* **.NET 8.0 SDK** or later.
+* **.NET 8.0 SDK** (if building from source).
 
 > **💡 Quick Install via Windows Package Manager (winget):**
 > ```powershell
@@ -234,7 +250,16 @@ Profiles are stored in `%APPDATA%\WorkspaceSwitcher\Profiles\<ProfileName>.json`
 
 ---
 
-### 2. Build & Run
+### 2. Launch Standalone Executable (Fastest)
+A ready-to-run portable single-file executable is generated in `./publish`:
+```powershell
+./publish/WorkspaceSwitcher.UI.exe
+```
+*(Or double-click the **Workspace Switcher** shortcut on your Desktop).*
+
+---
+
+### 3. Build & Run From Source
 
 1. **Clone the repository:**
    ```powershell
@@ -266,6 +291,8 @@ workspace-switcher/
 ├── .gitignore
 ├── README.md
 ├── WorkspaceSwitcher.sln
+├── publish/                                 # Standalone single-file Release executable
+│   └── WorkspaceSwitcher.UI.exe
 └── src/
     ├── WorkspaceSwitcher.Core/              # Core Engine Class Library (.NET 8)
     │   ├── Hotkeys/
@@ -276,23 +303,29 @@ workspace-switcher/
     │   │   ├── AppSettings.cs               # Application preferences model
     │   │   ├── WindowInfo.cs                # Window metadata & process paths
     │   │   ├── WindowPlacementInfo.cs       # Geometry & state DTOs
-    │   │   └── WorkspaceProfile.cs          # Workspace profile container
+    │   │   └── WorkspaceProfile.cs          # Workspace profile container with icon glyph
     │   ├── Native/
     │   │   └── NativeMethods.cs             # 64-bit safe Win32 & DWM P/Invoke declarations
     │   ├── Services/
     │   │   ├── IProfileService.cs           # Profile management interface
+    │   │   ├── MonitorService.cs            # Multi-display detection & bounds service
     │   │   ├── ProfileService.cs            # Atomic JSON read/write persistence
     │   │   └── SettingsService.cs           # Application configuration service
     │   └── WindowManager.cs                 # Snapshot filtering, matching & repositioning engine
     │
-    ├── WorkspaceSwitcher.UI/                # Modern Dark WPF Application (.NET 8)
-    │   ├── App.xaml / App.xaml.cs           # App lifecycle & service bootstrapping
-    │   ├── MainWindow.xaml / .cs            # Fluent 2-column dark dashboard & inspector
+    ├── WorkspaceSwitcher.UI/                # Modern Cyberpunk WPF Application (.NET 8)
+    │   ├── App.xaml / App.xaml.cs           # App lifecycle & glassmorphism theme resources
+    │   ├── MainWindow.xaml / .cs            # 2-column dark dashboard & window inspector
+    │   ├── app.ico                          # Multi-resolution application icon (16-256px)
+    │   ├── Views/
+    │   │   └── WorkspaceDialog.xaml / .cs   # Modal dialog for creating and editing profiles
     │   ├── Services/
+    │   │   ├── IconHelper.cs                # Native high-res .exe icon extractor & cache
     │   │   └── TrayIconService.cs           # System Tray Icon & dynamic context menu
     │   └── ViewModels/
     │       ├── MainViewModel.cs             # Primary MVVM ViewModel
-    │       ├── ProfileItemViewModel.cs      # Profile Card ViewModel
+    │       ├── ProfileItemViewModel.cs      # Workspace Card & Icon ViewModel
+    │       ├── WindowItemViewModel.cs       # Per-Window Inspector ViewModel
     │       └── RelayCommand.cs              # Generic ICommand implementation
     │
     └── WorkspaceSwitcher.Cli/               # Headless CLI & Test Runner
@@ -311,7 +344,7 @@ workspace-switcher/
 | <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>4</kbd> | Restore 4th saved workspace profile |
 | <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>5</kbd> | Restore 5th saved workspace profile |
 
-*(Hotkeys can be customized and mapped dynamically in the settings).*
+*(Hotkeys are dynamically assigned in real-time to your top 5 workspaces).*
 
 ---
 
