@@ -41,21 +41,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     public bool HasSelectedProfile => SelectedProfile != null;
 
-    public ObservableCollection<WindowItemViewModel> SelectedProfileWindowItems
-    {
-        get
-        {
-            var list = new ObservableCollection<WindowItemViewModel>();
-            if (SelectedProfile?.WindowItems != null)
-            {
-                foreach (var w in SelectedProfile.WindowItems)
-                {
-                    list.Add(w);
-                }
-            }
-            return list;
-        }
-    }
+    public ObservableCollection<WindowItemViewModel>? SelectedProfileWindowItems => SelectedProfile?.WindowItems;
 
     public string NewProfileName
     {

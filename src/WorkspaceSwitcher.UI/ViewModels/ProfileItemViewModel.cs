@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -14,12 +15,15 @@ public class ProfileItemViewModel : INotifyPropertyChanged
     private readonly int _colorIndex;
     private readonly Action<ProfileItemViewModel>? _onProfileUpdated;
 
+    public ObservableCollection<WindowItemViewModel> WindowItems { get; } = new();
+
     public WorkspaceProfile Profile
     {
         get => _profile;
         set
         {
             _profile = value;
+            ReloadWindowItems();
             NotifyAll();
         }
     }
@@ -82,36 +86,44 @@ public class ProfileItemViewModel : INotifyPropertyChanged
         }
     }
 
-    public IReadOnlyList<WindowItemViewModel> WindowItems
-    {
-        get
-        {
-            if (_profile.Windows == null) return Array.Empty<WindowItemViewModel>();
-            return _profile.Windows.Select(w => new WindowItemViewModel(
-                w,
-                onChanged: OnWindowChanged,
-                onRemove: OnWindowRemoved
-            )).ToList();
-        }
-    }
-
     public ProfileItemViewModel(WorkspaceProfile profile, int index = 0, Action<ProfileItemViewModel>? onProfileUpdated = null)
     {
         _profile = profile;
         _colorIndex = index;
         _onProfileUpdated = onProfileUpdated;
+
+        ReloadWindowItems();
+    }
+
+    private void ReloadWindowItems()
+    {
+        WindowItems.Clear();
+        if (_profile.Windows != null)
+        {
+            foreach (var w in _profile.Windows)
+            {
+                WindowItems.Add(new WindowItemViewModel(
+                    w,
+                    onChanged: OnWindowChanged,
+                    onRemove: OnWindowRemoved
+                ));
+            }
+        }
     }
 
     private void OnWindowChanged()
     {
-        NotifyAll();
+        OnPropertyChanged(nameof(WindowCount));
+        OnPropertyChanged(nameof(MonitorCount));
         _onProfileUpdated?.Invoke(this);
     }
 
     private void OnWindowRemoved(WindowItemViewModel item)
     {
+        WindowItems.Remove(item);
         _profile.Windows?.Remove(item.Model);
-        NotifyAll();
+        OnPropertyChanged(nameof(WindowCount));
+        OnPropertyChanged(nameof(MonitorCount));
         _onProfileUpdated?.Invoke(this);
     }
 

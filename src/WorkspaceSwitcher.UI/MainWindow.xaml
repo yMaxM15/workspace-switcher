@@ -337,7 +337,7 @@
 
                         <!-- Windows List -->
                         <ListBox Grid.Row="1" 
-                                 ItemsSource="{Binding SelectedProfileWindowItems}" 
+                                 ItemsSource="{Binding SelectedProfile.WindowItems}" 
                                  Background="Transparent" 
                                  BorderThickness="0"
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
