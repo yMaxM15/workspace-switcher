@@ -334,17 +334,17 @@ workspace-switcher/
 
 ---
 
-## ⌨️ Default Hotkeys
+## ⌨️ Customizable Global Hotkeys
 
-| Hotkey | Action |
+Each workspace profile supports full hotkey customization directly from the Create/Edit dialog:
+
+| Feature | Supported Options |
 | :--- | :--- |
-| <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>1</kbd> | Restore 1st saved workspace profile |
-| <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>2</kbd> | Restore 2nd saved workspace profile |
-| <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>3</kbd> | Restore 3rd saved workspace profile |
-| <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>4</kbd> | Restore 4th saved workspace profile |
-| <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>5</kbd> | Restore 5th saved workspace profile |
+| **Modifiers** | `Ctrl + Alt`, `Ctrl + Shift`, `Alt + Shift`, `Win + Alt`, `Ctrl + Win`, `None` |
+| **Keys** | `Auto (1–5)`, Numbers `0–9`, Letters `A–Z`, Function Keys `F1–F12`, `Disabled` |
+| **Default Mapping** | <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>1–5</kbd> (Auto-bound dynamically to your top workspaces) |
 
-*(Hotkeys are dynamically assigned in real-time to your top 5 workspaces).*
+*Hotkeys are registered at the OS kernel level via an independent Win32 message-only thread (`HWND_MESSAGE`) and trigger instantaneous zero-latency layout restoration even when apps are running full-screen or minimized.*
 
 ---
 

@@ -44,7 +44,7 @@
                 <!-- Icon Picker -->
                 <TextBlock Text="Workspace Icon" FontSize="11.5" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
                 <ListBox x:Name="IconListBox" 
-                         Background="Transparent" BorderThickness="0" Margin="0,0,0,20"
+                         Background="Transparent" BorderThickness="0" Margin="0,0,0,16"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                          ScrollViewer.VerticalScrollBarVisibility="Disabled">
                     <ListBox.ItemsPanel>
@@ -83,6 +83,19 @@
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
+
+                <!-- Hotkey Customization -->
+                <TextBlock Text="Quick Switch Hotkey" FontSize="11.5" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                <Grid Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <ComboBox x:Name="ModifierComboBox" Grid.Column="0" Style="{StaticResource DarkGlassComboBox}"/>
+                    <ComboBox x:Name="KeyComboBox" Grid.Column="2" Style="{StaticResource DarkGlassComboBox}"/>
+                </Grid>
             </StackPanel>
 
             <!-- Bottom Buttons -->

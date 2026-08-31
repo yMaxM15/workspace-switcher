@@ -54,12 +54,14 @@ public class WindowManager
     /// Captures a snapshot of all currently active and visible application windows.
     /// Excludes the switcher application itself, desktop shells, and background services.
     /// </summary>
-    public WorkspaceProfile CaptureWorkspace(string profileName, string? description = null, string? iconGlyph = null)
+    public WorkspaceProfile CaptureWorkspace(string profileName, string? description = null, string? iconGlyph = null, string? hotkeyModifier = null, string? hotkeyKey = null)
     {
         var profile = new WorkspaceProfile(profileName)
         {
             Description = description,
             IconGlyph = string.IsNullOrWhiteSpace(iconGlyph) ? "💻" : iconGlyph,
+            HotkeyModifier = string.IsNullOrWhiteSpace(hotkeyModifier) ? "Ctrl + Alt" : hotkeyModifier,
+            HotkeyKey = hotkeyKey,
             Windows = new List<WindowInfo>()
         };
 

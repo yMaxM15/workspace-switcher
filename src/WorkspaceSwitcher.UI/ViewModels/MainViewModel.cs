@@ -145,7 +145,12 @@ public class MainViewModel : INotifyPropertyChanged
         {
             try
             {
-                var profile = _windowManager.CaptureWorkspace(dlg.WorkspaceName, dlg.WorkspaceDescription, dlg.WorkspaceIcon);
+                var profile = _windowManager.CaptureWorkspace(
+                    dlg.WorkspaceName, 
+                    dlg.WorkspaceDescription, 
+                    dlg.WorkspaceIcon, 
+                    dlg.HotkeyModifier, 
+                    dlg.HotkeyKey);
                 _profileService.SaveProfile(profile);
 
                 LoadProfiles();
@@ -167,7 +172,13 @@ public class MainViewModel : INotifyPropertyChanged
         if (target == null) return;
 
         var owner = App.Current?.MainWindow;
-        var dlg = new WorkspaceDialog(target.Name, target.Description, target.IconGlyph, isEditMode: true)
+        var dlg = new WorkspaceDialog(
+            target.Name, 
+            target.Description, 
+            target.IconGlyph, 
+            target.HotkeyModifier, 
+            target.HotkeyKey, 
+            isEditMode: true)
         {
             Owner = owner
         };
@@ -181,6 +192,8 @@ public class MainViewModel : INotifyPropertyChanged
 
                 target.Profile.Description = dlg.WorkspaceDescription;
                 target.Profile.IconGlyph = dlg.WorkspaceIcon;
+                target.Profile.HotkeyModifier = dlg.HotkeyModifier;
+                target.Profile.HotkeyKey = dlg.HotkeyKey;
 
                 if (!string.Equals(oldName, newName, StringComparison.OrdinalIgnoreCase))
                 {
@@ -227,7 +240,7 @@ public class MainViewModel : INotifyPropertyChanged
 
         try
         {
-            var updated = _windowManager.CaptureWorkspace(target.Name, target.Profile.Description, target.IconGlyph);
+            var updated = _windowManager.CaptureWorkspace(target.Name, target.Profile.Description, target.IconGlyph, target.HotkeyModifier, target.HotkeyKey);
             _profileService.SaveProfile(updated);
             target.Profile = updated;
             OnPropertyChanged(nameof(SelectedProfileWindowItems));
@@ -269,11 +282,24 @@ public class MainViewModel : INotifyPropertyChanged
         {
             _hotkeyManager.UnregisterAll();
 
-            uint currentKey = 0x31; // '1'
-            foreach (var p in Profiles.Take(5))
+            int idx = 0;
+            foreach (var p in Profiles)
             {
-                _hotkeyManager.Register(KeyModifiers.Control | KeyModifiers.Alt, currentKey, p.Name, HotKeyAction.RestoreProfile);
-                currentKey++;
+                var mods = HotkeyHelper.ParseModifiers(p.HotkeyModifier);
+                uint vk = HotkeyHelper.ParseVirtualKey(p.HotkeyKey, idx);
+
+                if (vk != 0)
+                {
+                    try
+                    {
+                        _hotkeyManager.Register(mods, vk, p.Name, HotKeyAction.RestoreProfile);
+                    }
+                    catch
+                    {
+                        // Ignore individual hotkey collision
+                    }
+                }
+                idx++;
             }
         }
         catch

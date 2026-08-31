@@ -159,8 +159,11 @@
                                         <!-- Right: Metadata & Actions -->
                                         <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center">
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,6">
-                                                <TextBlock Text="{Binding WindowCount, StringFormat='{}{0} windows'}" FontSize="10" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,6,0"/>
-                                                <TextBlock Text="{Binding MonitorCount, StringFormat='{}🖥 {0}'}" FontSize="10" Foreground="{StaticResource TextMutedBrush}"/>
+                                                <Border Background="#161D36" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="5,1" Margin="0,0,6,0">
+                                                    <TextBlock Text="{Binding DisplayHotkey}" FontSize="9.5" FontWeight="SemiBold" Foreground="{StaticResource AccentIndigoBrush}"/>
+                                                </Border>
+                                                <TextBlock Text="{Binding WindowCount, StringFormat='{}{0}w'}" FontSize="10" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding MonitorCount, StringFormat='{}🖥{0}'}" FontSize="10" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
                                             </StackPanel>
 
                                             <!-- Mini Action Buttons (Apply, Edit Modal, Delete) -->
@@ -241,9 +244,12 @@
 
                             <!-- Metadata tags row -->
                             <StackPanel Orientation="Horizontal" Margin="56,0,0,0">
-                                <TextBlock Text="{Binding SelectedProfile.WindowCount, StringFormat='{}🗔 {0} Windows  •  '}" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
-                                <TextBlock Text="{Binding SelectedProfile.MonitorCount, StringFormat='{}🖥 {0} Monitors  •  '}" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
-                                <TextBlock Text="{Binding SelectedProfile.RelativeTime, StringFormat='{}Captured: {0}'}" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                                <Border Background="#161D36" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="4" Padding="6,1" Margin="0,0,8,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding SelectedProfile.DisplayHotkey}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource AccentIndigoBrush}"/>
+                                </Border>
+                                <TextBlock Text="{Binding SelectedProfile.WindowCount, StringFormat='{}🗔 {0} Windows  •  '}" FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding SelectedProfile.MonitorCount, StringFormat='{}🖥 {0} Monitors  •  '}" FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding SelectedProfile.RelativeTime, StringFormat='{}Captured: {0}'}" FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </StackPanel>
 

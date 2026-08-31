@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
+using WorkspaceSwitcher.Core.Hotkeys;
 using WorkspaceSwitcher.Core.Models;
 
 namespace WorkspaceSwitcher.UI.ViewModels;
@@ -49,6 +50,38 @@ public class ProfileItemViewModel : INotifyPropertyChanged
     {
         "💻", "🎮", "📚", "💼", "🎨", "🚀", "🌐", "⚙️", "🎬", "🎧", "⚡", "🔥", "🏆", "📱", "💡", "☕"
     };
+
+    public string HotkeyModifier
+    {
+        get => string.IsNullOrWhiteSpace(_profile.HotkeyModifier) ? "Ctrl + Alt" : _profile.HotkeyModifier;
+        set
+        {
+            if (_profile.HotkeyModifier != value)
+            {
+                _profile.HotkeyModifier = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(DisplayHotkey));
+                _onProfileUpdated?.Invoke(this);
+            }
+        }
+    }
+
+    public string HotkeyKey
+    {
+        get => _profile.HotkeyKey ?? "Auto (1-5)";
+        set
+        {
+            if (_profile.HotkeyKey != value)
+            {
+                _profile.HotkeyKey = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(DisplayHotkey));
+                _onProfileUpdated?.Invoke(this);
+            }
+        }
+    }
+
+    public string DisplayHotkey => HotkeyHelper.FormatDisplayHotkey(_profile.HotkeyModifier, _profile.HotkeyKey, _colorIndex);
 
     public int WindowCount => _profile.Windows?.Count ?? 0;
 
