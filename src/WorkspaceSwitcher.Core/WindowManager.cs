@@ -116,6 +116,8 @@ public class WindowManager
         var restoredCount = 0;
         var closedCount = 0;
 
+        var pendingLaunchWindows = new List<WindowInfo>();
+
         foreach (var savedWindow in profile.Windows)
         {
             if (IgnoredProcesses.Contains(savedWindow.ProcessName))
@@ -129,36 +131,32 @@ public class WindowManager
             {
                 matchedHandles.Add(target.Handle);
 
-                if (MoveWindowToPlacement(target.Handle, savedWindow.Placement))
+                if (MoveWindowToPlacement(target.Handle, savedWindow.Placement, savedWindow.Bounds))
                 {
                     restoredCount++;
                 }
             }
             else if (launchIfNotRunning)
             {
-                var launchExe = WorkspaceSwitcher.Core.Services.AppIdentityHelper.ResolveLaunchableExecutable(savedWindow.ProcessName, savedWindow.ExecutablePath) 
-                                ?? savedWindow.ExecutablePath;
+                pendingLaunchWindows.Add(savedWindow);
+            }
+        }
 
-                bool isRunning = WorkspaceSwitcher.Core.Services.AppIdentityHelper.IsSteam(savedWindow.ProcessName)
-                    ? (Process.GetProcessesByName("steam").Length > 0 || Process.GetProcessesByName("steamwebhelper").Length > 0)
-                    : (Process.GetProcessesByName(savedWindow.ProcessName).Length > 0);
-
-                if (!isRunning && !string.IsNullOrWhiteSpace(launchExe) && File.Exists(launchExe))
+        // Asynchronously launch missing apps and reposition their windows as soon as they appear
+        if (pendingLaunchWindows.Count > 0)
+        {
+            var successfullyLaunched = new List<WindowInfo>();
+            foreach (var pending in pendingLaunchWindows)
+            {
+                if (LaunchApp(pending))
                 {
-                    try
-                    {
-                        Process.Start(new ProcessStartInfo
-                        {
-                            FileName = launchExe,
-                            WorkingDirectory = Path.GetDirectoryName(launchExe),
-                            UseShellExecute = true
-                        });
-                    }
-                    catch
-                    {
-                        // Ignore launch failures
-                    }
+                    successfullyLaunched.Add(pending);
                 }
+            }
+
+            if (successfullyLaunched.Count > 0)
+            {
+                WatchAndPositionPendingWindowsAsync(successfullyLaunched, matchedHandles);
             }
         }
 
@@ -170,6 +168,110 @@ public class WindowManager
         }
 
         return (restoredCount, closedCount);
+    }
+
+    /// <summary>
+    /// Launches an application process for a window.
+    /// Handles execution aliases (e.g. wt.exe for Windows Terminal) and avoids protected directories.
+    /// </summary>
+    public static bool LaunchApp(WindowInfo window)
+    {
+        var launchExe = WorkspaceSwitcher.Core.Services.AppIdentityHelper.ResolveLaunchableExecutable(window.ProcessName, window.ExecutablePath) 
+                        ?? window.ExecutablePath;
+
+        if (string.IsNullOrWhiteSpace(launchExe))
+        {
+            launchExe = window.ProcessName;
+        }
+
+        try
+        {
+            string? workingDir = null;
+            if (File.Exists(launchExe))
+            {
+                var dir = Path.GetDirectoryName(launchExe);
+                if (!string.IsNullOrEmpty(dir) && !dir.Contains("WindowsApps", StringComparison.OrdinalIgnoreCase))
+                {
+                    workingDir = dir;
+                }
+            }
+
+            if (string.IsNullOrEmpty(workingDir))
+            {
+                workingDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            }
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = launchExe,
+                WorkingDirectory = workingDir,
+                UseShellExecute = true
+            });
+            return true;
+        }
+        catch
+        {
+            if (WorkspaceSwitcher.Core.Services.AppIdentityHelper.IsTerminal(window.ProcessName))
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "wt.exe",
+                        UseShellExecute = true
+                    });
+                    return true;
+                }
+                catch { }
+            }
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Watches for newly launched windows to appear and positions them according to their saved workspace layout.
+    /// </summary>
+    private void WatchAndPositionPendingWindowsAsync(List<WindowInfo> pendingWindows, HashSet<IntPtr> alreadyMatchedHandles)
+    {
+        System.Threading.Tasks.Task.Run(async () =>
+        {
+            var remaining = new List<WindowInfo>(pendingWindows);
+            var matched = new HashSet<IntPtr>(alreadyMatchedHandles);
+            var startTime = DateTime.UtcNow;
+            var maxWait = TimeSpan.FromSeconds(12);
+
+            while (remaining.Count > 0 && DateTime.UtcNow - startTime < maxWait)
+            {
+                await System.Threading.Tasks.Task.Delay(250).ConfigureAwait(false);
+
+                var currentWindows = GetCurrentOpenWindows();
+                for (int i = remaining.Count - 1; i >= 0; i--)
+                {
+                    var saved = remaining[i];
+                    var target = FindBestMatch(saved, currentWindows, matched);
+                    if (target != null)
+                    {
+                        matched.Add(target.Handle);
+                        MoveWindowToPlacement(target.Handle, saved.Placement, saved.Bounds);
+
+                        // Some apps (e.g. Firefox, Terminal) adjust bounds during initial startup/session restore.
+                        // Re-enforce placement after short delays.
+                        var handle = target.Handle;
+                        var placement = saved.Placement;
+                        var bounds = saved.Bounds;
+                        _ = System.Threading.Tasks.Task.Run(async () =>
+                        {
+                            await System.Threading.Tasks.Task.Delay(300).ConfigureAwait(false);
+                            MoveWindowToPlacement(handle, placement, bounds);
+                            await System.Threading.Tasks.Task.Delay(600).ConfigureAwait(false);
+                            MoveWindowToPlacement(handle, placement, bounds);
+                        });
+
+                        remaining.RemoveAt(i);
+                    }
+                }
+            }
+        });
     }
 
     /// <summary>
@@ -214,39 +316,64 @@ public class WindowManager
         return closed;
     }
 
+    public static bool MoveWindowToPlacement(IntPtr hWnd, WindowPlacementInfo placement)
+    {
+        return MoveWindowToPlacement(hWnd, placement, null);
+    }
+
     /// <summary>
     /// Repositions and resizes a window to the target placement across single- and multi-monitor setups.
     /// Reliably translates coordinates across monitors and handles maximized/minimized transitions.
+    /// Correctly supports snapped windows (Aero Snap) using exact screen bounds.
     /// </summary>
-    public static bool MoveWindowToPlacement(IntPtr hWnd, WindowPlacementInfo placement)
+    public static bool MoveWindowToPlacement(IntPtr hWnd, WindowPlacementInfo placement, WindowRect? bounds)
     {
         if (hWnd == IntPtr.Zero) return false;
 
-        var normal = placement.NormalPosition;
+        // Determine target position: for Normal state or Maximized monitor positioning,
+        // bounds gives the true screen coordinates.
+        var targetRect = (placement.State == WindowState.Normal && bounds != null && bounds.Width > 0 && bounds.Height > 0)
+            ? bounds
+            : (placement.NormalPosition != null && placement.NormalPosition.Width > 0 && placement.NormalPosition.Height > 0
+                ? placement.NormalPosition
+                : bounds ?? new WindowRect(100, 100, 900, 700));
 
         // 1. Check current window state
         var currentWp = NativeMethods.WINDOWPLACEMENT.Create();
         NativeMethods.GetWindowPlacement(hWnd, ref currentWp);
 
-        // 2. If currently maximized or minimized, restore first so Windows permits moving across monitors
+        // 2. If currently minimized or maximized, restore first so Windows allows repositioning
         if (currentWp.showCmd == NativeMethods.SW_SHOWMINIMIZED)
         {
             NativeMethods.ShowWindow(hWnd, NativeMethods.SW_RESTORE);
             System.Threading.Thread.Sleep(30);
         }
-        else if (currentWp.showCmd == NativeMethods.SW_SHOWMAXIMIZED)
+        else if (currentWp.showCmd == NativeMethods.SW_SHOWMAXIMIZED && placement.State != WindowState.Maximized)
         {
             NativeMethods.ShowWindow(hWnd, NativeMethods.SW_RESTORE);
+            System.Threading.Thread.Sleep(20);
+        }
+        else if (currentWp.showCmd == NativeMethods.SW_SHOWMAXIMIZED && placement.State == WindowState.Maximized)
+        {
+            // If window is already maximized, check if it needs to move to another monitor
+            NativeMethods.GetWindowRect(hWnd, out var curRect);
+            int curCenterX = curRect.Left + (curRect.Right - curRect.Left) / 2;
+            int targetCenterX = targetRect.Left + targetRect.Width / 2;
+            if (Math.Abs(curCenterX - targetCenterX) > 300)
+            {
+                NativeMethods.ShowWindow(hWnd, NativeMethods.SW_RESTORE);
+                System.Threading.Thread.Sleep(20);
+            }
         }
 
-        // 3. Move and size window to exact normal coordinates on the target monitor
+        // 3. Move and size window to exact target coordinates on the target monitor
         NativeMethods.SetWindowPos(
             hWnd,
             IntPtr.Zero,
-            normal.Left,
-            normal.Top,
-            normal.Width,
-            normal.Height,
+            targetRect.Left,
+            targetRect.Top,
+            targetRect.Width,
+            targetRect.Height,
             NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_NOZORDER | NativeMethods.SWP_FRAMECHANGED | NativeMethods.SWP_SHOWWINDOW
         );
 
@@ -261,15 +388,19 @@ public class WindowManager
         }
         else
         {
-            NativeMethods.ShowWindow(hWnd, NativeMethods.SW_SHOWNORMAL);
+            if (currentWp.showCmd != NativeMethods.SW_SHOWNORMAL)
+            {
+                NativeMethods.ShowWindow(hWnd, NativeMethods.SW_SHOWNORMAL);
+            }
+
             // Re-apply SetWindowPos to guarantee final coordinates on the target monitor
             NativeMethods.SetWindowPos(
                 hWnd,
                 IntPtr.Zero,
-                normal.Left,
-                normal.Top,
-                normal.Width,
-                normal.Height,
+                targetRect.Left,
+                targetRect.Top,
+                targetRect.Width,
+                targetRect.Height,
                 NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_NOZORDER | NativeMethods.SWP_FRAMECHANGED | NativeMethods.SWP_SHOWWINDOW
             );
         }
@@ -419,6 +550,13 @@ public class WindowManager
             {
                 NativeMethods.GetWindowRect(hWnd, out var rect);
                 bounds = WindowRect.FromNative(rect);
+            }
+
+            // In Windows 10/11, Aero Snap (snapping windows side-by-side or to corners) does NOT update 
+            // WINDOWPLACEMENT.rcNormalPosition. Synchronize NormalPosition with actual screen bounds for normal windows.
+            if (placementInfo.State == WindowState.Normal && bounds.Width > 0 && bounds.Height > 0)
+            {
+                placementInfo.NormalPosition = new WindowRect(bounds.Left, bounds.Top, bounds.Right, bounds.Bottom);
             }
 
             return new WindowInfo

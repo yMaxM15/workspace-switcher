@@ -99,6 +99,8 @@ public class ProfileService : IProfileService
             profile.Windows.RemoveAll(w => string.Equals(w.ProcessName, "WorkspaceSwitcher.UI", StringComparison.OrdinalIgnoreCase) ||
                                           string.Equals(w.ProcessName, "WorkspaceSwitcher", StringComparison.OrdinalIgnoreCase) ||
                                           string.Equals(w.ProcessName, "WorkspaceSwitcher.Cli", StringComparison.OrdinalIgnoreCase));
+
+            NormalizeProfileWindows(profile);
         }
         return profile;
     }
@@ -116,8 +118,39 @@ public class ProfileService : IProfileService
             profile.Windows.RemoveAll(w => string.Equals(w.ProcessName, "WorkspaceSwitcher.UI", StringComparison.OrdinalIgnoreCase) ||
                                           string.Equals(w.ProcessName, "WorkspaceSwitcher", StringComparison.OrdinalIgnoreCase) ||
                                           string.Equals(w.ProcessName, "WorkspaceSwitcher.Cli", StringComparison.OrdinalIgnoreCase));
+
+            NormalizeProfileWindows(profile);
         }
         return profile;
+    }
+
+    /// <summary>
+    /// Ensures that windows captured while snapped (Aero Snap) have their true visible bounds
+    /// synced to Placement.NormalPosition, fixing Windows' Win32 WINDOWPLACEMENT rcNormalPosition desync.
+    /// </summary>
+    private static void NormalizeProfileWindows(WorkspaceProfile profile)
+    {
+        if (profile.Windows == null) return;
+
+        foreach (var w in profile.Windows)
+        {
+            if (w.Placement == null)
+            {
+                w.Placement = new WindowPlacementInfo();
+            }
+
+            if (w.Bounds != null && w.Bounds.Width > 0 && w.Bounds.Height > 0)
+            {
+                if (w.Placement.State == WindowState.Normal)
+                {
+                    w.Placement.NormalPosition = new WindowRect(w.Bounds.Left, w.Bounds.Top, w.Bounds.Right, w.Bounds.Bottom);
+                }
+            }
+            else if (w.Placement.NormalPosition != null && w.Placement.NormalPosition.Width > 0 && w.Placement.NormalPosition.Height > 0)
+            {
+                w.Bounds = new WindowRect(w.Placement.NormalPosition.Left, w.Placement.NormalPosition.Top, w.Placement.NormalPosition.Right, w.Placement.NormalPosition.Bottom);
+            }
+        }
     }
 
     public IReadOnlyList<string> GetProfileNames()
