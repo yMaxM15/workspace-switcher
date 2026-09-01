@@ -20,9 +20,11 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly HotkeyManager _hotkeyManager;
 
     private ProfileItemViewModel? _selectedProfile;
+    private WorkspaceProfile? _activeProfile;
     private string _statusMessage = "Workspace Switcher is running in the background";
     private bool _autoLaunchMissingApps;
     private bool _minimizeToTrayOnClose;
+    private bool _closeAppsOnSwitch;
 
     public ObservableCollection<ProfileItemViewModel> Profiles { get; } = new();
 
@@ -37,6 +39,20 @@ public class MainViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(SelectedProfileWindowItems));
         }
     }
+
+    public WorkspaceProfile? ActiveProfile
+    {
+        get => _activeProfile;
+        private set
+        {
+            _activeProfile = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ActiveProfileName));
+            UpdateActiveProfilesInList();
+        }
+    }
+
+    public string? ActiveProfileName => _activeProfile?.Name;
 
     public bool HasSelectedProfile => SelectedProfile != null;
 
@@ -74,6 +90,17 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool CloseAppsOnSwitch
+    {
+        get => _closeAppsOnSwitch;
+        set
+        {
+            _closeAppsOnSwitch = value;
+            OnPropertyChanged();
+            SaveCurrentSettings();
+        }
+    }
+
     public int TotalProfilesCount => Profiles.Count;
 
     public IProfileService ProfileService => _profileService;
@@ -101,6 +128,12 @@ public class MainViewModel : INotifyPropertyChanged
         var settings = _settingsService.Load();
         _autoLaunchMissingApps = settings.AutoLaunchMissingApps;
         _minimizeToTrayOnClose = settings.MinimizeToTrayOnClose;
+        _closeAppsOnSwitch = settings.CloseAppsOnSwitch;
+
+        if (!string.IsNullOrWhiteSpace(settings.LastActiveProfileName))
+        {
+            _activeProfile = _profileService.LoadProfile(settings.LastActiveProfileName);
+        }
 
         OpenCreateWorkspaceDialogCommand = new RelayCommand(OpenCreateWorkspaceDialog);
         OpenEditWorkspaceDialogCommand = new RelayCommand<ProfileItemViewModel>(OpenEditWorkspaceDialog);
@@ -126,10 +159,19 @@ public class MainViewModel : INotifyPropertyChanged
         }
 
         OnPropertyChanged(nameof(TotalProfilesCount));
+        UpdateActiveProfilesInList();
 
         if (SelectedProfile == null && Profiles.Count > 0)
         {
             SelectedProfile = Profiles[0];
+        }
+    }
+
+    private void UpdateActiveProfilesInList()
+    {
+        foreach (var p in Profiles)
+        {
+            p.IsActive = _activeProfile != null && string.Equals(p.Name, _activeProfile.Name, StringComparison.OrdinalIgnoreCase);
         }
     }
 
@@ -152,6 +194,8 @@ public class MainViewModel : INotifyPropertyChanged
                     dlg.HotkeyModifier, 
                     dlg.HotkeyKey);
                 _profileService.SaveProfile(profile);
+                ActiveProfile = profile;
+                SaveCurrentSettings();
 
                 LoadProfiles();
                 SelectedProfile = Profiles.FirstOrDefault(p => p.Name.Equals(profile.Name, StringComparison.OrdinalIgnoreCase));
@@ -199,6 +243,12 @@ public class MainViewModel : INotifyPropertyChanged
                 {
                     _profileService.DeleteProfile(oldName);
                     target.Profile.Name = newName;
+
+                    if (_activeProfile != null && string.Equals(_activeProfile.Name, oldName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        ActiveProfile = target.Profile;
+                        SaveCurrentSettings();
+                    }
                 }
 
                 _profileService.SaveProfile(target.Profile);
@@ -217,20 +267,44 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    public void SwitchToWorkspace(WorkspaceProfile profile, string source = "")
+    {
+        if (profile == null) return;
+
+        try
+        {
+            var oldProfile = _activeProfile;
+            var (restoredCount, closedCount) = _windowManager.RestoreWorkspace(
+                profile, 
+                _autoLaunchMissingApps, 
+                previousProfile: oldProfile, 
+                closeAppsOnSwitch: _closeAppsOnSwitch);
+
+            ActiveProfile = profile;
+            SaveCurrentSettings();
+
+            string prefix = string.IsNullOrEmpty(source) ? "" : $"[{source}] ";
+            if (closedCount > 0)
+            {
+                StatusMessage = $"{prefix}Switched to '{profile.Name}' ({restoredCount} repositioned, {closedCount} closed from '{oldProfile?.Name}').";
+            }
+            else
+            {
+                StatusMessage = $"{prefix}Restored '{profile.Name}' ({restoredCount} windows repositioned).";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error switching workspace: {ex.Message}";
+        }
+    }
+
     public void ApplyProfile(ProfileItemViewModel? item)
     {
         var target = item ?? SelectedProfile;
         if (target == null) return;
 
-        try
-        {
-            int count = _windowManager.RestoreWorkspace(target.Profile, _autoLaunchMissingApps);
-            StatusMessage = $"Restored '{target.Name}' ({count} windows repositioned).";
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Error applying profile: {ex.Message}";
-        }
+        SwitchToWorkspace(target.Profile);
     }
 
     public void OverwriteProfile(ProfileItemViewModel? item)
@@ -243,6 +317,9 @@ public class MainViewModel : INotifyPropertyChanged
             var updated = _windowManager.CaptureWorkspace(target.Name, target.Profile.Description, target.IconGlyph, target.HotkeyModifier, target.HotkeyKey);
             _profileService.SaveProfile(updated);
             target.Profile = updated;
+            ActiveProfile = updated;
+            SaveCurrentSettings();
+
             OnPropertyChanged(nameof(SelectedProfileWindowItems));
             StatusMessage = $"Updated '{target.Name}' with current layout ({updated.Windows.Count} windows).";
         }
@@ -265,6 +342,12 @@ public class MainViewModel : INotifyPropertyChanged
             {
                 Profiles.Remove(match);
             }
+            if (_activeProfile != null && string.Equals(_activeProfile.Name, target.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                ActiveProfile = null;
+                SaveCurrentSettings();
+            }
+
             SelectedProfile = Profiles.FirstOrDefault();
             OnPropertyChanged(nameof(TotalProfilesCount));
             RegisterDefaultHotkeys();
@@ -315,10 +398,9 @@ public class MainViewModel : INotifyPropertyChanged
             var profile = _profileService.LoadProfile(e.Binding.TargetProfileName);
             if (profile != null)
             {
-                int count = _windowManager.RestoreWorkspace(profile, _autoLaunchMissingApps);
                 App.Current?.Dispatcher.Invoke(() =>
                 {
-                    StatusMessage = $"[Hotkey] Restored '{profile.Name}' ({count} windows repositioned).";
+                    SwitchToWorkspace(profile, source: "Hotkey");
                 });
             }
         }
@@ -326,11 +408,11 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void SaveCurrentSettings()
     {
-        var settings = new AppSettings
-        {
-            AutoLaunchMissingApps = _autoLaunchMissingApps,
-            MinimizeToTrayOnClose = _minimizeToTrayOnClose
-        };
+        var settings = _settingsService.Load();
+        settings.AutoLaunchMissingApps = _autoLaunchMissingApps;
+        settings.MinimizeToTrayOnClose = _minimizeToTrayOnClose;
+        settings.CloseAppsOnSwitch = _closeAppsOnSwitch;
+        settings.LastActiveProfileName = _activeProfile?.Name;
         _settingsService.Save(settings);
     }
 

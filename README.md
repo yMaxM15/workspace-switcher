@@ -19,7 +19,7 @@
 
 <br />
 
-<sub><i>Modern Cyberpunk / Indigo Glassmorphism UI with multi-monitor coordinates, native executable process icon extraction, modal workspace creator, and real-time window inspection.</i></sub>
+<sub><i>Modern Cyberpunk / Indigo Glassmorphism UI with active layout badges, per-monitor DPI awareness, native executable icon extraction, modal workspace creator, and real-time window inspection.</i></sub>
 
 </div>
 
@@ -49,6 +49,10 @@ When switching between multi-monitor setups, docking stations, unplugging extern
 * ⌨️ **Standalone Global Hotkey Dispatcher:** Dedicated Win32 message-only thread (`HWND_MESSAGE`) enables zero-latency global shortcuts (`Ctrl+Alt+1..5`) without blocking or relying on the GUI thread.
 * 🪟 **System Tray Quick-Switch & 1-Click `.exe` Launch:** Runs cleanly in the background with a system tray icon, auto-minimizaton, and single-file portable release distribution (`publish/WorkspaceSwitcher.UI.exe`).
 * 🚀 **Auto-Launch Missing Apps:** Optionally launches closed applications using their saved disk executable paths during layout restoration.
+* 🧹 **Clean Workspace Switching:** Option to automatically close open applications from the previous workspace when switching to a new layout.
+* 🟢 **Active Layout Tracking:** Live visual status badges and active indicators across profiles and the settings bar.
+* 🎯 **Smart App Identity & Resolution:** Robust process matching and executable resolution (handling Steam, browsers, Electron apps, and sub-process helpers).
+* 🖥️ **Per-Monitor V2 DPI Awareness:** Explicit application manifest ensuring pixel-perfect window coordinates across mixed high-DPI scaling displays.
 * 🛡️ **Zero-Corruption Persistence:** Profiles are stored as human-readable JSON files in `%APPDATA%\WorkspaceSwitcher\Profiles` with atomic file replace mechanics.
 
 ---
@@ -307,6 +311,7 @@ workspace-switcher/
     │   ├── Native/
     │   │   └── NativeMethods.cs             # 64-bit safe Win32 & DWM P/Invoke declarations
     │   ├── Services/
+    │   │   ├── AppIdentityHelper.cs         # Smart executable resolution & multi-process matching
     │   │   ├── IProfileService.cs           # Profile management interface
     │   │   ├── MonitorService.cs            # Multi-display detection & bounds service
     │   │   ├── ProfileService.cs            # Atomic JSON read/write persistence
@@ -317,6 +322,7 @@ workspace-switcher/
     │   ├── App.xaml / App.xaml.cs           # App lifecycle & glassmorphism theme resources
     │   ├── MainWindow.xaml / .cs            # 2-column dark dashboard & window inspector
     │   ├── app.ico                          # Multi-resolution application icon (16-256px)
+    │   ├── app.manifest                     # Per-Monitor V2 DPI-awareness manifest
     │   ├── Views/
     │   │   └── WorkspaceDialog.xaml / .cs   # Modal dialog for creating and editing profiles
     │   ├── Services/

@@ -18,8 +18,10 @@ public class WindowItemViewModel : INotifyPropertyChanged
     private bool _isExpanded;
 
     public WindowInfo Model { get; }
+    public string DisplayName => Model.DisplayName;
+    public string Subtitle => !string.IsNullOrWhiteSpace(Model.ExecutablePath) ? System.IO.Path.GetFileName(Model.ExecutablePath) : Model.ProcessName;
     public string ProcessName => Model.ProcessName;
-    public string WindowTitle => string.IsNullOrWhiteSpace(Model.WindowTitle) ? Model.ProcessName : Model.WindowTitle;
+    public string WindowTitle => string.IsNullOrWhiteSpace(Model.WindowTitle) ? Model.DisplayName : Model.WindowTitle;
     public string ExecutablePath => Model.ExecutablePath ?? "System / Background Process";
 
     public bool IsExpanded
@@ -65,8 +67,12 @@ public class WindowItemViewModel : INotifyPropertyChanged
     {
         get
         {
-            int left = Model.Placement.NormalPosition.Left;
-            return AvailableMonitors.FirstOrDefault(m => left >= m.Left && left < m.Left + m.Width) 
+            var p = Model.Placement.NormalPosition;
+            int midX = p.Left + (p.Width / 2);
+            int midY = p.Top + (p.Height / 2);
+
+            return AvailableMonitors.FirstOrDefault(m => midX >= m.Left && midX < m.Left + m.Width && midY >= m.Top && midY < m.Top + m.Height)
+                ?? AvailableMonitors.FirstOrDefault(m => p.Left >= m.Left && p.Left < m.Left + m.Width)
                 ?? AvailableMonitors.FirstOrDefault();
         }
         set
@@ -83,6 +89,11 @@ public class WindowItemViewModel : INotifyPropertyChanged
                     Model.Placement.NormalPosition.Right += offsetX;
                     Model.Placement.NormalPosition.Top += offsetY;
                     Model.Placement.NormalPosition.Bottom += offsetY;
+
+                    Model.Bounds.Left += offsetX;
+                    Model.Bounds.Right += offsetX;
+                    Model.Bounds.Top += offsetY;
+                    Model.Bounds.Bottom += offsetY;
 
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(Left));
@@ -112,9 +123,12 @@ public class WindowItemViewModel : INotifyPropertyChanged
             int w = Width;
             Model.Placement.NormalPosition.Left = value;
             Model.Placement.NormalPosition.Right = value + w;
+            Model.Bounds.Left = value;
+            Model.Bounds.Right = value + w;
             OnPropertyChanged();
             OnPropertyChanged(nameof(FormattedCoordinates));
             OnPropertyChanged(nameof(MonitorDisplay));
+            OnPropertyChanged(nameof(SelectedMonitor));
             _onChanged?.Invoke();
         }
     }
@@ -127,8 +141,12 @@ public class WindowItemViewModel : INotifyPropertyChanged
             int h = Height;
             Model.Placement.NormalPosition.Top = value;
             Model.Placement.NormalPosition.Bottom = value + h;
+            Model.Bounds.Top = value;
+            Model.Bounds.Bottom = value + h;
             OnPropertyChanged();
             OnPropertyChanged(nameof(FormattedCoordinates));
+            OnPropertyChanged(nameof(MonitorDisplay));
+            OnPropertyChanged(nameof(SelectedMonitor));
             _onChanged?.Invoke();
         }
     }
@@ -138,7 +156,9 @@ public class WindowItemViewModel : INotifyPropertyChanged
         get => Model.Placement.NormalPosition.Width;
         set
         {
-            Model.Placement.NormalPosition.Right = Model.Placement.NormalPosition.Left + Math.Max(100, value);
+            int w = Math.Max(100, value);
+            Model.Placement.NormalPosition.Right = Model.Placement.NormalPosition.Left + w;
+            Model.Bounds.Right = Model.Bounds.Left + w;
             OnPropertyChanged();
             OnPropertyChanged(nameof(FormattedCoordinates));
             _onChanged?.Invoke();
@@ -150,7 +170,9 @@ public class WindowItemViewModel : INotifyPropertyChanged
         get => Model.Placement.NormalPosition.Height;
         set
         {
-            Model.Placement.NormalPosition.Bottom = Model.Placement.NormalPosition.Top + Math.Max(100, value);
+            int h = Math.Max(100, value);
+            Model.Placement.NormalPosition.Bottom = Model.Placement.NormalPosition.Top + h;
+            Model.Bounds.Bottom = Model.Bounds.Top + h;
             OnPropertyChanged();
             OnPropertyChanged(nameof(FormattedCoordinates));
             _onChanged?.Invoke();

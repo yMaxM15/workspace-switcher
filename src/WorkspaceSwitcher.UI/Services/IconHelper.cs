@@ -15,16 +15,19 @@ public static class IconHelper
 
     public static ImageSource? GetIconForExecutable(string? executablePath, string processName)
     {
-        string key = executablePath ?? processName;
+        var resolvedPath = WorkspaceSwitcher.Core.Services.AppIdentityHelper.ResolveLaunchableExecutable(processName, executablePath);
+        string? targetPath = (!string.IsNullOrWhiteSpace(resolvedPath) && File.Exists(resolvedPath)) ? resolvedPath : executablePath;
+
+        string key = targetPath ?? processName;
         if (string.IsNullOrEmpty(key)) return null;
 
         return IconCache.GetOrAdd(key, _ =>
         {
             try
             {
-                if (!string.IsNullOrEmpty(executablePath) && File.Exists(executablePath))
+                if (!string.IsNullOrEmpty(targetPath) && File.Exists(targetPath))
                 {
-                    using var icon = Icon.ExtractAssociatedIcon(executablePath);
+                    using var icon = Icon.ExtractAssociatedIcon(targetPath);
                     if (icon != null)
                     {
                         var bitmapSource = Imaging.CreateBitmapSourceFromHIcon(

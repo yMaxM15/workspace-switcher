@@ -16,17 +16,20 @@ public class TrayIconService : IDisposable
     private readonly IProfileService _profileService;
     private readonly Action _showMainWindowAction;
     private readonly Action _exitAppAction;
+    private readonly Action<string>? _switchWorkspaceAction;
 
     public TrayIconService(
         WindowManager windowManager,
         IProfileService profileService,
         Action showMainWindowAction,
-        Action exitAppAction)
+        Action exitAppAction,
+        Action<string>? switchWorkspaceAction = null)
     {
         _windowManager = windowManager;
         _profileService = profileService;
         _showMainWindowAction = showMainWindowAction;
         _exitAppAction = exitAppAction;
+        _switchWorkspaceAction = switchWorkspaceAction;
 
         _notifyIcon = new NotifyIcon
         {
@@ -80,11 +83,18 @@ public class TrayIconService : IDisposable
                 var item = new ToolStripMenuItem(name);
                 item.Click += (s, e) =>
                 {
-                    var profile = _profileService.LoadProfile(name);
-                    if (profile != null)
+                    if (_switchWorkspaceAction != null)
                     {
-                        int restored = _windowManager.RestoreWorkspace(profile, launchIfNotRunning: false);
-                        ShowNotification("Profile Applied", $"Restored layout '{name}' ({restored} windows).");
+                        _switchWorkspaceAction(name);
+                    }
+                    else
+                    {
+                        var profile = _profileService.LoadProfile(name);
+                        if (profile != null)
+                        {
+                            int restored = _windowManager.RestoreWorkspace(profile, launchIfNotRunning: false);
+                            ShowNotification("Profile Applied", $"Restored layout '{name}' ({restored} windows).");
+                        }
                     }
                 };
                 quickSwitchMenu.DropDownItems.Add(item);

@@ -47,8 +47,14 @@ public class WindowInfo
     [JsonIgnore]
     public uint ProcessId { get; set; }
 
+    /// <summary>
+    /// Friendly application display name (e.g. "TeamSpeak 3", "Steam").
+    /// </summary>
+    [JsonIgnore]
+    public string DisplayName => WorkspaceSwitcher.Core.Services.AppIdentityHelper.GetFriendlyName(ProcessName, ExecutablePath, WindowTitle);
+
     public override string ToString()
     {
-        return $"[{ProcessName}] \"{WindowTitle}\" ({Bounds.Width}x{Bounds.Height} at {Bounds.Left},{Bounds.Top})";
+        return $"[{DisplayName} ({ProcessName})] \"{WindowTitle}\" ({Bounds.Width}x{Bounds.Height} at {Bounds.Left},{Bounds.Top})";
     }
 }

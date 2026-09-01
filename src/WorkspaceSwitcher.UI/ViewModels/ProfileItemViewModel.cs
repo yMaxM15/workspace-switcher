@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Media;
 using WorkspaceSwitcher.Core.Hotkeys;
 using WorkspaceSwitcher.Core.Models;
+using WorkspaceSwitcher.Core.Services;
 
 namespace WorkspaceSwitcher.UI.ViewModels;
 
@@ -15,8 +16,22 @@ public class ProfileItemViewModel : INotifyPropertyChanged
     private WorkspaceProfile _profile;
     private readonly int _colorIndex;
     private readonly Action<ProfileItemViewModel>? _onProfileUpdated;
+    private bool _isActive;
 
     public ObservableCollection<WindowItemViewModel> WindowItems { get; } = new();
+
+    public bool IsActive
+    {
+        get => _isActive;
+        set
+        {
+            if (_isActive != value)
+            {
+                _isActive = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     public WorkspaceProfile Profile
     {
@@ -90,15 +105,23 @@ public class ProfileItemViewModel : INotifyPropertyChanged
         get
         {
             if (_profile.Windows == null || _profile.Windows.Count == 0) return 1;
-            var monitors = new HashSet<int>();
+            var monitors = MonitorService.GetConnectedMonitors();
+            var detected = new HashSet<int>();
             foreach (var w in _profile.Windows)
             {
-                int left = w.Placement.NormalPosition.Left;
-                if (left < 0) monitors.Add(2);
-                else if (left >= 1920) monitors.Add(3);
-                else monitors.Add(1);
+                var p = w.Placement.NormalPosition;
+                int midX = p.Left + (p.Width / 2);
+                int midY = p.Top + (p.Height / 2);
+
+                var mon = monitors.FirstOrDefault(m => midX >= m.Left && midX < m.Left + m.Width && midY >= m.Top && midY < m.Top + m.Height)
+                    ?? monitors.FirstOrDefault(m => p.Left >= m.Left && p.Left < m.Left + m.Width);
+
+                if (mon != null)
+                {
+                    detected.Add(mon.Index);
+                }
             }
-            return Math.Max(1, monitors.Count);
+            return Math.Max(1, detected.Count);
         }
     }
 
@@ -189,6 +212,7 @@ public class ProfileItemViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(MonitorCount));
         OnPropertyChanged(nameof(RelativeTime));
         OnPropertyChanged(nameof(WindowItems));
+        OnPropertyChanged(nameof(IsActive));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

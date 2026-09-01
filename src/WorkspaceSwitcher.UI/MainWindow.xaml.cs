@@ -35,7 +35,16 @@ public partial class MainWindow : Window
             _windowManager,
             _profileService,
             ShowWindow,
-            ExplicitExit
+            ExplicitExit,
+            profileName =>
+            {
+                var profile = _profileService.LoadProfile(profileName);
+                if (profile != null)
+                {
+                    _viewModel.SwitchToWorkspace(profile, source: "Tray");
+                    _trayIconService?.ShowNotification("Workspace Switched", $"Switched to '{profile.Name}'.");
+                }
+            }
         );
     }
 

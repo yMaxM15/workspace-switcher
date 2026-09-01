@@ -92,14 +92,29 @@ public class WindowManager
     /// </summary>
     public int RestoreWorkspace(WorkspaceProfile profile, bool launchIfNotRunning = false)
     {
+        var (restored, _) = RestoreWorkspace(profile, launchIfNotRunning, previousProfile: null, closeAppsOnSwitch: false);
+        return restored;
+    }
+
+    /// <summary>
+    /// Restores a given workspace profile by repositioning matching windows across monitors.
+    /// Optionally launches closed apps and closes apps from the previous workspace that are not in the new layout.
+    /// </summary>
+    public (int RestoredCount, int ClosedCount) RestoreWorkspace(
+        WorkspaceProfile profile, 
+        bool launchIfNotRunning = false,
+        WorkspaceProfile? previousProfile = null,
+        bool closeAppsOnSwitch = false)
+    {
         if (profile == null || profile.Windows == null || profile.Windows.Count == 0)
         {
-            return 0;
+            return (0, 0);
         }
 
         var currentWindows = GetCurrentOpenWindows();
         var matchedHandles = new HashSet<IntPtr>();
         var restoredCount = 0;
+        var closedCount = 0;
 
         foreach (var savedWindow in profile.Windows)
         {
@@ -119,16 +134,23 @@ public class WindowManager
                     restoredCount++;
                 }
             }
-            else if (launchIfNotRunning && !string.IsNullOrWhiteSpace(savedWindow.ExecutablePath) && File.Exists(savedWindow.ExecutablePath))
+            else if (launchIfNotRunning)
             {
-                // Only launch if not already running any instance
-                if (Process.GetProcessesByName(savedWindow.ProcessName).Length == 0)
+                var launchExe = WorkspaceSwitcher.Core.Services.AppIdentityHelper.ResolveLaunchableExecutable(savedWindow.ProcessName, savedWindow.ExecutablePath) 
+                                ?? savedWindow.ExecutablePath;
+
+                bool isRunning = WorkspaceSwitcher.Core.Services.AppIdentityHelper.IsSteam(savedWindow.ProcessName)
+                    ? (Process.GetProcessesByName("steam").Length > 0 || Process.GetProcessesByName("steamwebhelper").Length > 0)
+                    : (Process.GetProcessesByName(savedWindow.ProcessName).Length > 0);
+
+                if (!isRunning && !string.IsNullOrWhiteSpace(launchExe) && File.Exists(launchExe))
                 {
                     try
                     {
                         Process.Start(new ProcessStartInfo
                         {
-                            FileName = savedWindow.ExecutablePath,
+                            FileName = launchExe,
+                            WorkingDirectory = Path.GetDirectoryName(launchExe),
                             UseShellExecute = true
                         });
                     }
@@ -140,12 +162,61 @@ public class WindowManager
             }
         }
 
-        return restoredCount;
+        // Close windows from previous workspace that are not in the new workspace
+        if (closeAppsOnSwitch && previousProfile != null && previousProfile.Windows != null &&
+            !string.Equals(previousProfile.Name, profile.Name, StringComparison.OrdinalIgnoreCase))
+        {
+            closedCount = CloseOldWorkspaceWindows(previousProfile, matchedHandles, currentWindows);
+        }
+
+        return (restoredCount, closedCount);
+    }
+
+    /// <summary>
+    /// Closes any open windows that belonged to the previous workspace and were not claimed by the new workspace.
+    /// </summary>
+    private int CloseOldWorkspaceWindows(
+        WorkspaceProfile previousProfile, 
+        HashSet<IntPtr> keptHandles, 
+        List<WindowInfo> currentWindows)
+    {
+        if (previousProfile?.Windows == null || previousProfile.Windows.Count == 0)
+        {
+            return 0;
+        }
+
+        int closed = 0;
+        var handledHandles = new HashSet<IntPtr>(keptHandles);
+
+        foreach (var oldWindow in previousProfile.Windows)
+        {
+            if (IgnoredProcesses.Contains(oldWindow.ProcessName))
+            {
+                continue;
+            }
+
+            var match = FindBestMatch(oldWindow, currentWindows, handledHandles);
+            if (match != null)
+            {
+                handledHandles.Add(match.Handle);
+                try
+                {
+                    NativeMethods.PostMessage(match.Handle, NativeMethods.WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                    closed++;
+                }
+                catch
+                {
+                    // Ignore failure to post WM_CLOSE
+                }
+            }
+        }
+
+        return closed;
     }
 
     /// <summary>
     /// Repositions and resizes a window to the target placement across single- and multi-monitor setups.
-    /// Safely handles un-maximizing before cross-monitor translation.
+    /// Reliably translates coordinates across monitors and handles maximized/minimized transitions.
     /// </summary>
     public static bool MoveWindowToPlacement(IntPtr hWnd, WindowPlacementInfo placement)
     {
@@ -158,7 +229,12 @@ public class WindowManager
         NativeMethods.GetWindowPlacement(hWnd, ref currentWp);
 
         // 2. If currently maximized or minimized, restore first so Windows permits moving across monitors
-        if (currentWp.showCmd == NativeMethods.SW_SHOWMAXIMIZED || currentWp.showCmd == NativeMethods.SW_SHOWMINIMIZED)
+        if (currentWp.showCmd == NativeMethods.SW_SHOWMINIMIZED)
+        {
+            NativeMethods.ShowWindow(hWnd, NativeMethods.SW_RESTORE);
+            System.Threading.Thread.Sleep(30);
+        }
+        else if (currentWp.showCmd == NativeMethods.SW_SHOWMAXIMIZED)
         {
             NativeMethods.ShowWindow(hWnd, NativeMethods.SW_RESTORE);
         }
@@ -171,14 +247,10 @@ public class WindowManager
             normal.Top,
             normal.Width,
             normal.Height,
-            NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_NOZORDER | 0x0020 | NativeMethods.SWP_SHOWWINDOW
+            NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_NOZORDER | NativeMethods.SWP_FRAMECHANGED | NativeMethods.SWP_SHOWWINDOW
         );
 
-        // 4. Apply placement memory
-        var nativePlacement = placement.ToNative();
-        NativeMethods.SetWindowPlacement(hWnd, ref nativePlacement);
-
-        // 5. Apply target final state (Maximized, Minimized, Normal)
+        // 4. Apply target final state (Maximized, Minimized, Normal)
         if (placement.State == WindowState.Maximized)
         {
             NativeMethods.ShowWindow(hWnd, NativeMethods.SW_SHOWMAXIMIZED);
@@ -190,6 +262,16 @@ public class WindowManager
         else
         {
             NativeMethods.ShowWindow(hWnd, NativeMethods.SW_SHOWNORMAL);
+            // Re-apply SetWindowPos to guarantee final coordinates on the target monitor
+            NativeMethods.SetWindowPos(
+                hWnd,
+                IntPtr.Zero,
+                normal.Left,
+                normal.Top,
+                normal.Width,
+                normal.Height,
+                NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_NOZORDER | NativeMethods.SWP_FRAMECHANGED | NativeMethods.SWP_SHOWWINDOW
+            );
         }
 
         return true;
@@ -292,6 +374,11 @@ public class WindowManager
                     return null;
 
                 exePath = GetProcessExecutablePath(processId, proc);
+                var resolvedExe = WorkspaceSwitcher.Core.Services.AppIdentityHelper.ResolveLaunchableExecutable(processName, exePath);
+                if (!string.IsNullOrWhiteSpace(resolvedExe))
+                {
+                    exePath = resolvedExe;
+                }
             }
             catch
             {
@@ -389,31 +476,31 @@ public class WindowManager
     {
         var candidates = currentWindows.Where(w => !alreadyMatched.Contains(w.Handle)).ToList();
 
-        // 1. Exact Match: ProcessName + WindowTitle + ClassName
+        // 1. Exact Match: ProcessMatch + WindowTitle + ClassName
         var match = candidates.FirstOrDefault(w =>
-            string.Equals(w.ProcessName, savedWindow.ProcessName, StringComparison.OrdinalIgnoreCase) &&
+            WorkspaceSwitcher.Core.Services.AppIdentityHelper.IsMatchingProcess(w.ProcessName, savedWindow.ProcessName) &&
             string.Equals(w.WindowTitle, savedWindow.WindowTitle, StringComparison.Ordinal) &&
             string.Equals(w.ClassName, savedWindow.ClassName, StringComparison.OrdinalIgnoreCase));
 
         if (match != null) return match;
 
-        // 2. Strong Match: ProcessName + WindowTitle
+        // 2. Strong Match: ProcessMatch + WindowTitle
         match = candidates.FirstOrDefault(w =>
-            string.Equals(w.ProcessName, savedWindow.ProcessName, StringComparison.OrdinalIgnoreCase) &&
+            WorkspaceSwitcher.Core.Services.AppIdentityHelper.IsMatchingProcess(w.ProcessName, savedWindow.ProcessName) &&
             string.Equals(w.WindowTitle, savedWindow.WindowTitle, StringComparison.OrdinalIgnoreCase));
 
         if (match != null) return match;
 
-        // 3. Partial Match: ProcessName + ClassName
+        // 3. Partial Match: ProcessMatch + ClassName
         match = candidates.FirstOrDefault(w =>
-            string.Equals(w.ProcessName, savedWindow.ProcessName, StringComparison.OrdinalIgnoreCase) &&
+            WorkspaceSwitcher.Core.Services.AppIdentityHelper.IsMatchingProcess(w.ProcessName, savedWindow.ProcessName) &&
             string.Equals(w.ClassName, savedWindow.ClassName, StringComparison.OrdinalIgnoreCase));
 
         if (match != null) return match;
 
-        // 4. Fallback: First available window of the same process name
+        // 4. Fallback: First available window of matching process
         match = candidates.FirstOrDefault(w =>
-            string.Equals(w.ProcessName, savedWindow.ProcessName, StringComparison.OrdinalIgnoreCase));
+            WorkspaceSwitcher.Core.Services.AppIdentityHelper.IsMatchingProcess(w.ProcessName, savedWindow.ProcessName));
 
         return match;
     }

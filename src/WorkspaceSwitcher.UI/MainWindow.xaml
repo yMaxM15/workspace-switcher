@@ -151,7 +151,14 @@
 
                                         <!-- Center: Info -->
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                                <Border Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}}" 
+                                                        Background="#052E16" BorderBrush="#10B981" BorderThickness="1" 
+                                                        CornerRadius="4" Padding="5,1" Margin="6,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="ACTIVE" FontSize="8.5" FontWeight="Bold" Foreground="#10B981"/>
+                                                </Border>
+                                            </StackPanel>
                                             <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,1,0,2" TextTrimming="CharacterEllipsis"/>
                                             <TextBlock Text="{Binding RelativeTime}" FontSize="10" Foreground="{StaticResource TextMutedBrush}"/>
                                         </StackPanel>
@@ -378,8 +385,8 @@
                                                     <Image Grid.Column="0" Source="{Binding AppIcon}" Width="22" Height="22" Margin="0,0,10,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
 
                                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                        <TextBlock Text="{Binding ProcessName}" FontWeight="Bold" FontSize="12.5" Foreground="{StaticResource TextPrimaryBrush}"/>
-                                                        <TextBlock Text="{Binding ExecutablePath}" FontSize="10" Foreground="{StaticResource TextMutedBrush}" TextTrimming="CharacterEllipsis"/>
+                                                        <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" FontSize="12.5" Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                                        <TextBlock Text="{Binding Subtitle}" FontSize="10" Foreground="{StaticResource TextMutedBrush}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ExecutablePath}"/>
                                                     </StackPanel>
                                                 </Grid>
 
@@ -534,6 +541,10 @@
                         </StackPanel>
 
                         <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <!-- Left Option -->
                                 <ColumnDefinition Width="*"/>
@@ -544,7 +555,7 @@
                             </Grid.ColumnDefinitions>
 
                             <!-- Option 1: Auto-launch closed apps -->
-                            <Grid Grid.Column="0">
+                            <Grid Grid.Row="0" Grid.Column="0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
@@ -556,8 +567,21 @@
                                 <CheckBox Grid.Column="1" Style="{StaticResource ModernToggleSwitch}" IsChecked="{Binding AutoLaunchMissingApps}"/>
                             </Grid>
 
-                            <!-- Option 2: Minimize to System Tray -->
-                            <Grid Grid.Column="2">
+                            <!-- Option 2: Close previous workspace apps -->
+                            <Grid Grid.Row="0" Grid.Column="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
+                                    <TextBlock Text="Close old workspace apps on switch" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                    <TextBlock Text="Close apps from the old workspace not in the new layout." FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" Style="{StaticResource ModernToggleSwitch}" IsChecked="{Binding CloseAppsOnSwitch}"/>
+                            </Grid>
+
+                            <!-- Option 3: Minimize to System Tray -->
+                            <Grid Grid.Row="1" Grid.Column="0" Margin="0,12,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
@@ -567,6 +591,17 @@
                                     <TextBlock Text="Keep Workspace Switcher running in the background." FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
                                 </StackPanel>
                                 <CheckBox Grid.Column="1" Style="{StaticResource ModernToggleSwitch}" IsChecked="{Binding MinimizeToTrayOnClose}"/>
+                            </Grid>
+
+                            <!-- Active Workspace Indicator -->
+                            <Grid Grid.Row="1" Grid.Column="2" Margin="0,12,0,0">
+                                <StackPanel VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Active workspace: " FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                                        <TextBlock Text="{Binding ActiveProfileName, FallbackValue='None'}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentIndigoBrush}"/>
+                                    </StackPanel>
+                                    <TextBlock Text="Layouts smoothly transition across all connected displays." FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
+                                </StackPanel>
                             </Grid>
                         </Grid>
                     </StackPanel>
