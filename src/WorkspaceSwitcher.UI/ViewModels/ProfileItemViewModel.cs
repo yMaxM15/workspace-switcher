@@ -16,9 +16,33 @@ public class ProfileItemViewModel : INotifyPropertyChanged
     private WorkspaceProfile _profile;
     private readonly int _colorIndex;
     private readonly Action<ProfileItemViewModel>? _onProfileUpdated;
+    private readonly Action<TaskbarItemViewModel, ProfileItemViewModel>? _onTaskbarStaticToggled;
     private bool _isActive;
 
     public ObservableCollection<WindowItemViewModel> WindowItems { get; } = new();
+    public ObservableCollection<TaskbarItemViewModel> TaskbarItems { get; } = new();
+
+    public bool HasTaskbarConfig => _profile.Taskbar != null && _profile.Taskbar.PinnedItems.Count > 0;
+    public int TaskbarItemCount => _profile.Taskbar?.PinnedItems.Count ?? 0;
+
+    public bool IsTaskbarEnabled
+    {
+        get => _profile.Taskbar?.Enabled ?? false;
+        set
+        {
+            if (_profile.Taskbar == null)
+            {
+                _profile.Taskbar = new TaskbarConfiguration { Enabled = value };
+            }
+            else
+            {
+                _profile.Taskbar.Enabled = value;
+            }
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasTaskbarConfig));
+            _onProfileUpdated?.Invoke(this);
+        }
+    }
 
     public bool IsActive
     {
@@ -162,13 +186,53 @@ public class ProfileItemViewModel : INotifyPropertyChanged
         }
     }
 
-    public ProfileItemViewModel(WorkspaceProfile profile, int index = 0, Action<ProfileItemViewModel>? onProfileUpdated = null)
+    public ProfileItemViewModel(
+        WorkspaceProfile profile, 
+        int index = 0, 
+        Action<ProfileItemViewModel>? onProfileUpdated = null,
+        Action<TaskbarItemViewModel, ProfileItemViewModel>? onTaskbarStaticToggled = null)
     {
         _profile = profile;
         _colorIndex = index;
         _onProfileUpdated = onProfileUpdated;
+        _onTaskbarStaticToggled = onTaskbarStaticToggled;
 
         ReloadWindowItems();
+        ReloadTaskbarItems();
+    }
+
+    public void ReloadTaskbarItems()
+    {
+        TaskbarItems.Clear();
+        if (_profile.Taskbar?.PinnedItems != null)
+        {
+            foreach (var item in _profile.Taskbar.PinnedItems)
+            {
+                TaskbarItems.Add(new TaskbarItemViewModel(
+                    item,
+                    onStaticToggled: OnTaskbarItemToggled,
+                    onRemove: OnTaskbarItemRemoved
+                ));
+            }
+        }
+        OnPropertyChanged(nameof(HasTaskbarConfig));
+        OnPropertyChanged(nameof(TaskbarItemCount));
+        OnPropertyChanged(nameof(IsTaskbarEnabled));
+    }
+
+    private void OnTaskbarItemToggled(TaskbarItemViewModel item)
+    {
+        _onTaskbarStaticToggled?.Invoke(item, this);
+        _onProfileUpdated?.Invoke(this);
+    }
+
+    private void OnTaskbarItemRemoved(TaskbarItemViewModel item)
+    {
+        TaskbarItems.Remove(item);
+        _profile.Taskbar?.PinnedItems.Remove(item.Model);
+        OnPropertyChanged(nameof(HasTaskbarConfig));
+        OnPropertyChanged(nameof(TaskbarItemCount));
+        _onProfileUpdated?.Invoke(this);
     }
 
     private void ReloadWindowItems()
@@ -212,6 +276,10 @@ public class ProfileItemViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(MonitorCount));
         OnPropertyChanged(nameof(RelativeTime));
         OnPropertyChanged(nameof(WindowItems));
+        OnPropertyChanged(nameof(TaskbarItems));
+        OnPropertyChanged(nameof(HasTaskbarConfig));
+        OnPropertyChanged(nameof(TaskbarItemCount));
+        OnPropertyChanged(nameof(IsTaskbarEnabled));
         OnPropertyChanged(nameof(IsActive));
     }
 

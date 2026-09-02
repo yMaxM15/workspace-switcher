@@ -18,6 +18,7 @@ public class MainViewModel : INotifyPropertyChanged
     private readonly IProfileService _profileService;
     private readonly SettingsService _settingsService;
     private readonly HotkeyManager _hotkeyManager;
+    private readonly TaskbarService _taskbarService;
 
     private ProfileItemViewModel? _selectedProfile;
     private WorkspaceProfile? _activeProfile;
@@ -25,6 +26,7 @@ public class MainViewModel : INotifyPropertyChanged
     private bool _autoLaunchMissingApps;
     private bool _minimizeToTrayOnClose;
     private bool _closeAppsOnSwitch;
+    private bool _switchTaskbarPins;
 
     public ObservableCollection<ProfileItemViewModel> Profiles { get; } = new();
 
@@ -37,8 +39,11 @@ public class MainViewModel : INotifyPropertyChanged
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasSelectedProfile));
             OnPropertyChanged(nameof(SelectedProfileWindowItems));
+            OnPropertyChanged(nameof(SelectedProfileTaskbarItems));
         }
     }
+
+    public ObservableCollection<TaskbarItemViewModel>? SelectedProfileTaskbarItems => SelectedProfile?.TaskbarItems;
 
     public WorkspaceProfile? ActiveProfile
     {
@@ -57,6 +62,26 @@ public class MainViewModel : INotifyPropertyChanged
     public bool HasSelectedProfile => SelectedProfile != null;
 
     public ObservableCollection<WindowItemViewModel>? SelectedProfileWindowItems => SelectedProfile?.WindowItems;
+
+    private int _selectedInspectorTab = 0; // 0 = Windows, 1 = Taskbar
+
+    public int SelectedInspectorTab
+    {
+        get => _selectedInspectorTab;
+        set
+        {
+            if (_selectedInspectorTab != value)
+            {
+                _selectedInspectorTab = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsWindowsTabSelected));
+                OnPropertyChanged(nameof(IsTaskbarTabSelected));
+            }
+        }
+    }
+
+    public bool IsWindowsTabSelected => _selectedInspectorTab == 0;
+    public bool IsTaskbarTabSelected => _selectedInspectorTab == 1;
 
     public string StatusMessage
     {
@@ -101,10 +126,22 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool SwitchTaskbarPins
+    {
+        get => _switchTaskbarPins;
+        set
+        {
+            _switchTaskbarPins = value;
+            OnPropertyChanged();
+            SaveCurrentSettings();
+        }
+    }
+
     public int TotalProfilesCount => Profiles.Count;
 
     public IProfileService ProfileService => _profileService;
     public WindowManager WindowManager => _windowManager;
+    public TaskbarService TaskbarService => _taskbarService;
 
     // Commands
     public ICommand OpenCreateWorkspaceDialogCommand { get; }
@@ -113,6 +150,11 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand OverwriteProfileCommand { get; }
     public ICommand DeleteProfileCommand { get; }
     public ICommand RefreshProfilesCommand { get; }
+    public ICommand CaptureTaskbarCommand { get; }
+    public ICommand ApplyTaskbarCommand { get; }
+    public ICommand SyncStaticPinsCommand { get; }
+    public ICommand SelectWindowsTabCommand { get; }
+    public ICommand SelectTaskbarTabCommand { get; }
 
     public MainViewModel(
         WindowManager windowManager,
@@ -124,11 +166,13 @@ public class MainViewModel : INotifyPropertyChanged
         _profileService = profileService;
         _settingsService = settingsService;
         _hotkeyManager = hotkeyManager;
+        _taskbarService = new TaskbarService();
 
         var settings = _settingsService.Load();
         _autoLaunchMissingApps = settings.AutoLaunchMissingApps;
         _minimizeToTrayOnClose = settings.MinimizeToTrayOnClose;
         _closeAppsOnSwitch = settings.CloseAppsOnSwitch;
+        _switchTaskbarPins = settings.SwitchTaskbarPins;
 
         if (!string.IsNullOrWhiteSpace(settings.LastActiveProfileName))
         {
@@ -141,6 +185,11 @@ public class MainViewModel : INotifyPropertyChanged
         OverwriteProfileCommand = new RelayCommand<ProfileItemViewModel>(OverwriteProfile);
         DeleteProfileCommand = new RelayCommand<ProfileItemViewModel>(DeleteProfile);
         RefreshProfilesCommand = new RelayCommand(LoadProfiles);
+        CaptureTaskbarCommand = new RelayCommand<ProfileItemViewModel>(CaptureTaskbar);
+        ApplyTaskbarCommand = new RelayCommand<ProfileItemViewModel>(ApplyTaskbar);
+        SyncStaticPinsCommand = new RelayCommand(SyncStaticPins);
+        SelectWindowsTabCommand = new RelayCommand(() => SelectedInspectorTab = 0);
+        SelectTaskbarTabCommand = new RelayCommand(() => SelectedInspectorTab = 1);
 
         _hotkeyManager.HotKeyPressed += OnHotKeyPressed;
 
@@ -155,7 +204,7 @@ public class MainViewModel : INotifyPropertyChanged
         int idx = 0;
         foreach (var p in allProfiles.OrderByDescending(p => p.LastModifiedAt))
         {
-            Profiles.Add(new ProfileItemViewModel(p, idx++, pvm => _profileService.SaveProfile(pvm.Profile)));
+            Profiles.Add(new ProfileItemViewModel(p, idx++, pvm => _profileService.SaveProfile(pvm.Profile), OnTaskbarStaticToggled));
         }
 
         OnPropertyChanged(nameof(TotalProfilesCount));
@@ -187,12 +236,15 @@ public class MainViewModel : INotifyPropertyChanged
         {
             try
             {
+                var staticPins = _settingsService.Load().StaticPinnedApps;
                 var profile = _windowManager.CaptureWorkspace(
                     dlg.WorkspaceName, 
                     dlg.WorkspaceDescription, 
                     dlg.WorkspaceIcon, 
                     dlg.HotkeyModifier, 
-                    dlg.HotkeyKey);
+                    dlg.HotkeyKey,
+                    captureTaskbar: dlg.CaptureTaskbar,
+                    staticAppIdentifiers: staticPins);
                 _profileService.SaveProfile(profile);
                 ActiveProfile = profile;
                 SaveCurrentSettings();
@@ -201,7 +253,9 @@ public class MainViewModel : INotifyPropertyChanged
                 SelectedProfile = Profiles.FirstOrDefault(p => p.Name.Equals(profile.Name, StringComparison.OrdinalIgnoreCase));
                 RegisterDefaultHotkeys();
 
-                StatusMessage = $"Workspace '{profile.Name}' captured with {profile.Windows.Count} window(s)!";
+                int taskbarCount = profile.Taskbar?.PinnedItems.Count ?? 0;
+                string taskbarInfo = taskbarCount > 0 ? $", {taskbarCount} taskbar pin(s)" : "";
+                StatusMessage = $"Workspace '{profile.Name}' captured with {profile.Windows.Count} window(s){taskbarInfo}!";
             }
             catch (Exception ex)
             {
@@ -274,23 +328,31 @@ public class MainViewModel : INotifyPropertyChanged
         try
         {
             var oldProfile = _activeProfile;
+            var staticPins = _settingsService.Load().StaticPinnedApps;
+
             var (restoredCount, closedCount) = _windowManager.RestoreWorkspace(
                 profile, 
                 _autoLaunchMissingApps, 
                 previousProfile: oldProfile, 
-                closeAppsOnSwitch: _closeAppsOnSwitch);
+                closeAppsOnSwitch: _closeAppsOnSwitch,
+                switchTaskbarPins: _switchTaskbarPins,
+                staticAppIdentifiers: staticPins);
 
             ActiveProfile = profile;
             SaveCurrentSettings();
 
             string prefix = string.IsNullOrEmpty(source) ? "" : $"[{source}] ";
+            string taskbarNote = (_switchTaskbarPins && profile.Taskbar != null && profile.Taskbar.Enabled)
+                ? $", taskbar switched to {profile.Taskbar.PinnedItems.Count} pins"
+                : "";
+
             if (closedCount > 0)
             {
-                StatusMessage = $"{prefix}Switched to '{profile.Name}' ({restoredCount} repositioned, {closedCount} closed from '{oldProfile?.Name}').";
+                StatusMessage = $"{prefix}Switched to '{profile.Name}' ({restoredCount} repositioned, {closedCount} closed from '{oldProfile?.Name}'{taskbarNote}).";
             }
             else
             {
-                StatusMessage = $"{prefix}Restored '{profile.Name}' ({restoredCount} windows repositioned).";
+                StatusMessage = $"{prefix}Restored '{profile.Name}' ({restoredCount} windows repositioned{taskbarNote}).";
             }
         }
         catch (Exception ex)
@@ -314,14 +376,28 @@ public class MainViewModel : INotifyPropertyChanged
 
         try
         {
-            var updated = _windowManager.CaptureWorkspace(target.Name, target.Profile.Description, target.IconGlyph, target.HotkeyModifier, target.HotkeyKey);
+            var staticPins = _settingsService.Load().StaticPinnedApps;
+            bool captureTaskbar = target.Profile.Taskbar?.Enabled ?? true;
+            var updated = _windowManager.CaptureWorkspace(
+                target.Name, 
+                target.Profile.Description, 
+                target.IconGlyph, 
+                target.HotkeyModifier, 
+                target.HotkeyKey,
+                captureTaskbar: captureTaskbar,
+                staticAppIdentifiers: staticPins);
+
             _profileService.SaveProfile(updated);
             target.Profile = updated;
             ActiveProfile = updated;
             SaveCurrentSettings();
 
             OnPropertyChanged(nameof(SelectedProfileWindowItems));
-            StatusMessage = $"Updated '{target.Name}' with current layout ({updated.Windows.Count} windows).";
+            OnPropertyChanged(nameof(SelectedProfileTaskbarItems));
+
+            int taskbarCount = updated.Taskbar?.PinnedItems.Count ?? 0;
+            string taskbarInfo = taskbarCount > 0 ? $", {taskbarCount} taskbar pin(s)" : "";
+            StatusMessage = $"Updated '{target.Name}' with current layout ({updated.Windows.Count} windows{taskbarInfo}).";
         }
         catch (Exception ex)
         {
@@ -406,12 +482,130 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    public void CaptureTaskbar(ProfileItemViewModel? item)
+    {
+        var target = item ?? SelectedProfile;
+        if (target == null) return;
+
+        try
+        {
+            var staticPins = _settingsService.Load().StaticPinnedApps;
+            var config = _taskbarService.CaptureCurrentTaskbar(staticPins);
+            target.Profile.Taskbar = config;
+            _profileService.SaveProfile(target.Profile);
+            target.ReloadTaskbarItems();
+            target.NotifyAll();
+
+            StatusMessage = $"Captured {config.PinnedItems.Count} taskbar pin(s) for '{target.Name}'.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error capturing taskbar pins: {ex.Message}";
+        }
+    }
+
+    public void ApplyTaskbar(ProfileItemViewModel? item)
+    {
+        var target = item ?? SelectedProfile;
+        if (target == null || target.Profile.Taskbar == null)
+        {
+            StatusMessage = "No taskbar configuration captured for this workspace.";
+            return;
+        }
+
+        try
+        {
+            var staticPins = _settingsService.Load().StaticPinnedApps;
+            bool ok = _taskbarService.ApplyTaskbar(target.Profile.Taskbar, staticPins);
+            StatusMessage = ok
+                ? $"Applied taskbar layout for '{target.Name}' ({target.TaskbarItemCount} pinned apps)."
+                : $"Failed to apply taskbar layout for '{target.Name}'.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error applying taskbar: {ex.Message}";
+        }
+    }
+
+    public void SyncStaticPins()
+    {
+        try
+        {
+            var settings = _settingsService.Load();
+            var allProfiles = _profileService.GetAllProfiles();
+
+            foreach (var p in allProfiles)
+            {
+                if (p.Taskbar?.PinnedItems == null) continue;
+                foreach (var item in p.Taskbar.PinnedItems.Where(i => i.IsStatic).ToList())
+                {
+                    _taskbarService.SyncStaticItemAcrossProfiles(item, true, allProfiles, prof => _profileService.SaveProfile(prof));
+                }
+            }
+
+            LoadProfiles();
+            StatusMessage = $"Synchronized static taskbar pins across all workspaces.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error syncing static pins: {ex.Message}";
+        }
+    }
+
+    private void OnTaskbarStaticToggled(TaskbarItemViewModel item, ProfileItemViewModel profile)
+    {
+        try
+        {
+            var settings = _settingsService.Load();
+            if (item.IsStatic)
+            {
+                if (!settings.StaticPinnedApps.Contains(item.ShortcutFileName, StringComparer.OrdinalIgnoreCase))
+                {
+                    settings.StaticPinnedApps.Add(item.ShortcutFileName);
+                }
+            }
+            else
+            {
+                settings.StaticPinnedApps.RemoveAll(x =>
+                    string.Equals(x, item.ShortcutFileName, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(x, item.DisplayName, StringComparison.OrdinalIgnoreCase));
+            }
+            _settingsService.Save(settings);
+
+            // Synchronize static status across other profiles
+            var allProfiles = _profileService.GetAllProfiles();
+            _taskbarService.SyncStaticItemAcrossProfiles(item.Model, item.IsStatic, allProfiles, p => _profileService.SaveProfile(p));
+
+            // Reload other profiles in memory
+            foreach (var pvm in Profiles)
+            {
+                if (pvm != profile)
+                {
+                    var updated = _profileService.LoadProfile(pvm.Name);
+                    if (updated != null)
+                    {
+                        pvm.Profile = updated;
+                    }
+                }
+            }
+
+            StatusMessage = item.IsStatic
+                ? $"'{item.DisplayName}' is now marked Static (preserved across all workspaces)."
+                : $"'{item.DisplayName}' is now workspace-only for '{profile.Name}'.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error updating static pin: {ex.Message}";
+        }
+    }
+
     private void SaveCurrentSettings()
     {
         var settings = _settingsService.Load();
         settings.AutoLaunchMissingApps = _autoLaunchMissingApps;
         settings.MinimizeToTrayOnClose = _minimizeToTrayOnClose;
         settings.CloseAppsOnSwitch = _closeAppsOnSwitch;
+        settings.SwitchTaskbarPins = _switchTaskbarPins;
         settings.LastActiveProfileName = _activeProfile?.Name;
         _settingsService.Save(settings);
     }

@@ -170,7 +170,8 @@
                                                     <TextBlock Text="{Binding DisplayHotkey}" FontSize="9.5" FontWeight="SemiBold" Foreground="{StaticResource AccentIndigoBrush}"/>
                                                 </Border>
                                                 <TextBlock Text="{Binding WindowCount, StringFormat='{}{0}w'}" FontSize="10" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                                                <TextBlock Text="{Binding MonitorCount, StringFormat='{}🖥{0}'}" FontSize="10" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding MonitorCount, StringFormat='{}🖥{0}'}" FontSize="10" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding TaskbarItemCount, StringFormat='{}📌{0}'}" Visibility="{Binding HasTaskbarConfig, Converter={StaticResource BoolToVis}}" FontSize="10" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
                                             </StackPanel>
 
                                             <!-- Mini Action Buttons (Apply, Edit Modal, Delete) -->
@@ -256,6 +257,7 @@
                                 </Border>
                                 <TextBlock Text="{Binding SelectedProfile.WindowCount, StringFormat='{}🗔 {0} Windows  •  '}" FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding SelectedProfile.MonitorCount, StringFormat='{}🖥 {0} Monitors  •  '}" FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding SelectedProfile.TaskbarItemCount, StringFormat='{}📌 {0} Taskbar Pins  •  '}" FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding SelectedProfile.RelativeTime, StringFormat='{}Captured: {0}'}" FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </StackPanel>
@@ -296,8 +298,93 @@
                     </Grid>
                 </Border>
 
-                <!-- 2. WINDOWS IN THIS WORKSPACE LIST -->
-                <Border Grid.Row="1" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="18,14" Margin="0,0,0,14">
+                <!-- 2. WORKSPACE INSPECTOR TABS & CONTENT -->
+                <Grid Grid.Row="1" Margin="0,0,0,14">
+                    <Grid.RowDefinitions>
+                        <!-- Tab Selector Buttons -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- Tab Content Viewport -->
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- TAB SELECTOR HEADER -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                        <!-- Tab 1: Application Windows -->
+                        <Button Command="{Binding SelectWindowsTabCommand}" Margin="0,0,8,0" Cursor="Hand">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="#11162A"/>
+                                    <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
+                                    <Setter Property="BorderThickness" Value="1"/>
+                                    <Setter Property="Padding" Value="14,7"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="TabBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <DataTrigger Binding="{Binding IsWindowsTabSelected}" Value="True">
+                                                        <Setter TargetName="TabBorder" Property="Background" Value="#1E2648"/>
+                                                        <Setter TargetName="TabBorder" Property="BorderBrush" Value="{StaticResource AccentIndigoBrush}"/>
+                                                    </DataTrigger>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="TabBorder" Property="BorderBrush" Value="{StaticResource CardBorderHoverBrush}"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </Button.Style>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🗔 Application Windows" FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                <Border Background="#1E2642" CornerRadius="8" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding SelectedProfile.WindowCount, FallbackValue='0'}" FontSize="10.5" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </Border>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Tab 2: Taskbar Pinned Apps -->
+                        <Button Command="{Binding SelectTaskbarTabCommand}" Cursor="Hand">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="#11162A"/>
+                                    <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
+                                    <Setter Property="BorderThickness" Value="1"/>
+                                    <Setter Property="Padding" Value="14,7"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="TabBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <DataTrigger Binding="{Binding IsTaskbarTabSelected}" Value="True">
+                                                        <Setter TargetName="TabBorder" Property="Background" Value="#1E2648"/>
+                                                        <Setter TargetName="TabBorder" Property="BorderBrush" Value="{StaticResource AccentIndigoBrush}"/>
+                                                    </DataTrigger>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="TabBorder" Property="BorderBrush" Value="{StaticResource CardBorderHoverBrush}"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </Button.Style>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📌 Taskbar Pinned Apps" FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                <Border Background="#1E2642" CornerRadius="8" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding SelectedProfile.TaskbarItemCount, FallbackValue='0'}" FontSize="10.5" FontWeight="SemiBold" Foreground="{StaticResource AccentIndigoBrush}"/>
+                                </Border>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- TAB 1: WINDOWS IN THIS WORKSPACE LIST -->
+                    <Border Grid.Row="1" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="18,14"
+                            Visibility="{Binding IsWindowsTabSelected, Converter={StaticResource BoolToVis}}">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -530,7 +617,205 @@
                             </ListBox.ItemTemplate>
                         </ListBox>
                     </Grid>
-                </Border>
+                    </Border>
+
+                    <!-- TAB 2: TASKBAR PINNED APPS -->
+                    <Border Grid.Row="1" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="18,14"
+                            Visibility="{Binding IsTaskbarTabSelected, Converter={StaticResource BoolToVis}}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <!-- Header with actions -->
+                                <RowDefinition Height="Auto"/>
+                                <!-- Notice Banner -->
+                                <RowDefinition Height="Auto"/>
+                                <!-- Content List or Empty State -->
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Header -->
+                            <Grid Grid.Row="0" Margin="0,0,0,12">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Taskbar Pinned Apps" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                    <Border Background="#1E2642" CornerRadius="8" Padding="6,1" Margin="8,0,14,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding SelectedProfile.TaskbarItemCount, FallbackValue='0'}" FontSize="10.5" FontWeight="SemiBold" Foreground="{StaticResource AccentIndigoBrush}"/>
+                                    </Border>
+                                    <CheckBox Style="{StaticResource ModernToggleSwitch}" IsChecked="{Binding SelectedProfile.IsTaskbarEnabled, FallbackValue=true}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Enabled for this workspace" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button Style="{StaticResource DarkSecondaryButton}" 
+                                            Padding="10,6" Margin="0,0,8,0"
+                                            Command="{Binding CaptureTaskbarCommand}"
+                                            CommandParameter="{Binding SelectedProfile}"
+                                            IsEnabled="{Binding HasSelectedProfile}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="📸" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Snapshot Taskbar" FontSize="11" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+
+                                    <Button Style="{StaticResource IndigoGradientButton}" 
+                                            Padding="12,6" Margin="0,0,8,0"
+                                            Command="{Binding ApplyTaskbarCommand}"
+                                            CommandParameter="{Binding SelectedProfile}"
+                                            IsEnabled="{Binding SelectedProfile.HasTaskbarConfig}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="▶" FontSize="10" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Apply Taskbar Now" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+
+                                    <Button Style="{StaticResource DarkSecondaryButton}" 
+                                            Padding="10,6"
+                                            ToolTip="Sync all static pins across all saved workspaces"
+                                            Command="{Binding SyncStaticPinsCommand}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="⚡" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Sync Static Pins" FontSize="11" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Notice Banner -->
+                            <Border Grid.Row="1" Background="#161D36" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="10" Padding="12,8" Margin="0,0,0,12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="💡" FontSize="14" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" TextWrapping="Wrap">
+                                        <Run Text="Toggle " Foreground="{StaticResource TextMutedBrush}"/>
+                                        <Run Text="📌 Static" FontWeight="Bold" Foreground="{StaticResource AccentIndigoBrush}"/>
+                                        <Run Text=" on any app to keep it pinned across all workspaces (e.g. Browser, File Explorer). " Foreground="{StaticResource TextMutedBrush}"/>
+                                        <Run Text="🗔 Workspace Only" FontWeight="Bold" Foreground="#60A5FA"/>
+                                        <Run Text=" apps will appear exclusively when this workspace is active." Foreground="{StaticResource TextMutedBrush}"/>
+                                    </TextBlock>
+                                </Grid>
+                            </Border>
+
+                            <!-- Taskbar Items List (When Config Exists) -->
+                            <ListBox Grid.Row="2" 
+                                     ItemsSource="{Binding SelectedProfile.TaskbarItems}"
+                                     Visibility="{Binding SelectedProfile.HasTaskbarConfig, Converter={StaticResource BoolToVis}}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="Padding" Value="0"/>
+                                        <Setter Property="Margin" Value="0,0,0,7"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListBoxItem">
+                                                    <Border Background="{StaticResource CardBgLightBrush}" 
+                                                            BorderBrush="{StaticResource CardBorderBrush}" 
+                                                            BorderThickness="1" 
+                                                            CornerRadius="10" 
+                                                            Padding="12,9">
+                                                        <ContentPresenter/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <!-- App Icon -->
+                                                <ColumnDefinition Width="38"/>
+                                                <!-- Name & Path -->
+                                                <ColumnDefinition Width="*"/>
+                                                <!-- Static Toggle Pill & Delete -->
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Icon -->
+                                            <Border Grid.Column="0" Width="30" Height="30" CornerRadius="6" Background="#11162A" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" Margin="0,0,10,0" VerticalAlignment="Center">
+                                                <Image Source="{Binding Icon}" Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                            </Border>
+
+                                            <!-- Details -->
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
+                                                <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" FontSize="12.5" Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding TargetPath, FallbackValue='Windows Shell Shortcut'}" FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+
+                                            <!-- Actions -->
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <!-- Static / Workspace Only Button -->
+                                                <Button Command="{Binding ToggleStaticCommand}" Margin="0,0,8,0" Cursor="Hand">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button">
+                                                            <Setter Property="Padding" Value="10,5"/>
+                                                            <Setter Property="Template">
+                                                                <Setter.Value>
+                                                                    <ControlTemplate TargetType="Button">
+                                                                        <Border x:Name="PillBorder" CornerRadius="12" Padding="{TemplateBinding Padding}" BorderThickness="1">
+                                                                            <TextBlock Text="{Binding StaticStatusText}" FontSize="11" FontWeight="SemiBold"/>
+                                                                        </Border>
+                                                                        <ControlTemplate.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsStatic}" Value="True">
+                                                                                <Setter TargetName="PillBorder" Property="Background" Value="#2D1F58"/>
+                                                                                <Setter TargetName="PillBorder" Property="BorderBrush" Value="{StaticResource AccentPurpleBrush}"/>
+                                                                                <Setter Property="Foreground" Value="#C084FC"/>
+                                                                            </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding IsStatic}" Value="False">
+                                                                                <Setter TargetName="PillBorder" Property="Background" Value="#11162A"/>
+                                                                                <Setter TargetName="PillBorder" Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
+                                                                                <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+                                                                            </DataTrigger>
+                                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                                <Setter TargetName="PillBorder" Property="BorderBrush" Value="White"/>
+                                                                            </Trigger>
+                                                                        </ControlTemplate.Triggers>
+                                                                    </ControlTemplate>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+
+                                                <!-- Remove from Workspace Button -->
+                                                <Button Style="{StaticResource DarkIconButton}" 
+                                                        Content="✕" 
+                                                        Padding="8,4" FontSize="10"
+                                                        Foreground="#F87171"
+                                                        ToolTip="Remove from this workspace layout"
+                                                        Command="{Binding RemoveCommand}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <!-- Empty State (When No Config) -->
+                            <Border Grid.Row="2" Background="{StaticResource CardBgLightBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="10" Padding="24"
+                                    Visibility="{Binding SelectedProfile.HasTaskbarConfig, Converter={StaticResource InverseBoolToVis}}">
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="📌" FontSize="36" HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                                    <TextBlock Text="No Taskbar Layout Captured For This Workspace" FontSize="15" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                                    <TextBlock Text="Click 'Snapshot Current Taskbar' to save your currently pinned taskbar apps (games, IDEs, tools) to this workspace." FontSize="11.5" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="440" Margin="0,0,0,16"/>
+                                    <Button Style="{StaticResource IndigoGradientButton}" 
+                                            Padding="16,8"
+                                            HorizontalAlignment="Center"
+                                            Command="{Binding CaptureTaskbarCommand}"
+                                            CommandParameter="{Binding SelectedProfile}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="📸" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Snapshot Current Taskbar" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </Grid>
 
                 <!-- 3. RESTORE SETTINGS CARD (with iOS / Fluent Purple Toggle Switches) -->
                 <Border Grid.Row="2" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="14" Padding="18,14">
@@ -542,6 +827,7 @@
 
                         <Grid>
                             <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
@@ -601,6 +887,30 @@
                                         <TextBlock Text="{Binding ActiveProfileName, FallbackValue='None'}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource AccentIndigoBrush}"/>
                                     </StackPanel>
                                     <TextBlock Text="Layouts smoothly transition across all connected displays." FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Option 4: Switch Taskbar Pinned Apps -->
+                            <Grid Grid.Row="2" Grid.Column="0" Margin="0,12,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
+                                    <TextBlock Text="Switch Taskbar pinned apps on restore" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                    <TextBlock Text="Swap taskbar shortcuts between workspaces (e.g. Gaming vs Work)." FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" Style="{StaticResource ModernToggleSwitch}" IsChecked="{Binding SwitchTaskbarPins}"/>
+                            </Grid>
+
+                            <!-- Static Pins Info -->
+                            <Grid Grid.Row="2" Grid.Column="2" Margin="0,12,0,0">
+                                <StackPanel VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="📌 Static pins: " FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
+                                        <TextBlock Text="Preserved across all layouts" FontSize="11" FontWeight="SemiBold" Foreground="#C084FC"/>
+                                    </StackPanel>
+                                    <TextBlock Text="Toggle '📌 Static' on any pinned app to keep it across all workspaces." FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Grid>
                         </Grid>

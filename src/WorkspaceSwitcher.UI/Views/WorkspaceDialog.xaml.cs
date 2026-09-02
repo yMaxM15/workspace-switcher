@@ -12,6 +12,7 @@ public partial class WorkspaceDialog : Window
     public string WorkspaceIcon { get; private set; } = "💻";
     public string HotkeyModifier { get; private set; } = "Ctrl + Alt";
     public string HotkeyKey { get; private set; } = "Auto (1-5)";
+    public bool CaptureTaskbar { get; private set; } = true;
 
     public WorkspaceDialog(
         string? initialName = null, 
@@ -34,6 +35,7 @@ public partial class WorkspaceDialog : Window
             HeaderTitleText.Text = "Edit Workspace";
             HeaderSubtitleText.Text = "Modify the name, description, icon or hotkey for this workspace.";
             PrimaryActionButton.Content = "💾 Save Changes";
+            TaskbarOptionBorder.Visibility = Visibility.Collapsed;
         }
         else
         {
@@ -82,6 +84,7 @@ public partial class WorkspaceDialog : Window
         WorkspaceIcon = IconListBox.SelectedItem?.ToString() ?? "💻";
         HotkeyModifier = ModifierComboBox.SelectedItem?.ToString() ?? "Ctrl + Alt";
         HotkeyKey = KeyComboBox.SelectedItem?.ToString() ?? "Auto (1-5)";
+        CaptureTaskbar = CaptureTaskbarCheckBox.IsChecked == true;
 
         DialogResult = true;
         Close();

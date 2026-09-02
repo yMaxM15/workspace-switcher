@@ -48,4 +48,55 @@ public static class IconHelper
             return null;
         });
     }
+
+    public static ImageSource? GetIconForShortcut(string shortcutFileName, string? targetPath)
+    {
+        string key = $"lnk_{shortcutFileName}_{targetPath}";
+        return IconCache.GetOrAdd(key, _ =>
+        {
+            try
+            {
+                // 1. Check if the actual .lnk file exists in the User Pinned directory
+                string lnkPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    @"Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar",
+                    shortcutFileName
+                );
+
+                if (File.Exists(lnkPath))
+                {
+                    using var icon = Icon.ExtractAssociatedIcon(lnkPath);
+                    if (icon != null)
+                    {
+                        var bitmapSource = Imaging.CreateBitmapSourceFromHIcon(
+                            icon.Handle,
+                            Int32Rect.Empty,
+                            BitmapSizeOptions.FromEmptyOptions()
+                        );
+                        bitmapSource.Freeze();
+                        return bitmapSource;
+                    }
+                }
+
+                // 2. Fallback to target executable if available
+                if (!string.IsNullOrEmpty(targetPath) && File.Exists(targetPath))
+                {
+                    using var icon = Icon.ExtractAssociatedIcon(targetPath);
+                    if (icon != null)
+                    {
+                        var bitmapSource = Imaging.CreateBitmapSourceFromHIcon(
+                            icon.Handle,
+                            Int32Rect.Empty,
+                            BitmapSizeOptions.FromEmptyOptions()
+                        );
+                        bitmapSource.Freeze();
+                        return bitmapSource;
+                    }
+                }
+            }
+            catch { }
+
+            return null;
+        });
+    }
 }

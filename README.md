@@ -37,15 +37,18 @@ When switching between multi-monitor setups, docking stations, unplugging extern
 
 ## ✨ Key Features
 
+* 📌 **Dynamic Taskbar App Switching:** Seamlessly switch your Windows taskbar pinned applications per workspace! Transition from a gaming taskbar (Steam, Discord, OBS) to a work taskbar (VS Code, Teams, Slack) instantly upon restoring or switching workspaces.
+* 🔒 **Static Pinned Apps Support:** Tag any pinned app as **Static (All Workspaces)** with a single click. Essential tools like your primary Web Browser or File Explorer stay permanently pinned across every workspace layout while workspace-only pins swap dynamically.
+* 🗂️ **Dual Workspace Inspector (Windows & Taskbar Tabs):** Easily switch between inspecting open windows (with coordinates, states, and monitor assignments) and managing taskbar pinned shortcuts (with live icon rendering, static toggle pills, manual snapshot, and apply buttons).
 * 📸 **Intelligent Multi-Monitor Snapshots:** Automatically discovers all user-facing application windows across all connected displays while filtering out invisible system services, desktop shells, and suspended UWP apps.
 * ⚡ **Pixel-Perfect Restoration:** Restores exact window coordinates and states (`Maximized`, `Normal`, `Minimized`) across single- and multi-monitor setups without coordinate distortion or window borders glitches.
-* 🎨 **Dedicated Workspace Creation & Edit Modal:** Click **`+ New`** or the **`✏️` Edit** button on any workspace to open a centered Dark Glassmorphism dialog where you can rename profiles, edit descriptions, and choose from a 16-icon glyph palette (`💻`, `🎮`, `📚`, `💼`, `🎨`, `🚀`, `🌐`, `⚙️`, `🎬`, `🎧`, `⚡`, `🔥`, `🏆`, `📱`, `💡`, `☕`).
+* 🎨 **Dedicated Workspace Creation & Edit Modal:** Click **`+ New`** or the **`✏️` Edit** button on any workspace to open a centered Dark Glassmorphism dialog where you can rename profiles, edit descriptions, toggle taskbar snapshotting, and choose from a 16-icon glyph palette (`💻`, `🎮`, `📚`, `💼`, `🎨`, `🚀`, `🌐`, `⚙️`, `🎬`, `🎧`, `⚡`, `🔥`, `🏆`, `📱`, `💡`, `☕`).
 * 🎛️ **Interactive Window Customization Drawer:** Click on any window card to expand its detailed inspector:
   * **Target Window State:** Set to `Normal`, `Maximized`, or `Minimized`.
   * **Target Monitor:** Shift the window to `Monitor 1`, `Monitor 2`, or `Monitor 3` with automatic pixel offset recalculation.
   * **Pixel Coordinates:** Fine-tune `X`, `Y`, `Width`, and `Height` parameters.
   * **Exclusion / Deletion:** Remove specific windows from the workspace with instant reactive auto-save.
-* 🖼️ **Native High-Res Executable Icon Extraction:** Automatically extracts and renders the authentic high-resolution application icon from each process's `.exe` on disk with concurrent memory caching.
+* 🖼️ **Native High-Res Executable Icon Extraction:** Automatically extracts and renders the authentic high-resolution application icon from each process's `.exe` and `.lnk` shortcut on disk with concurrent memory caching.
 * ⌨️ **Standalone Global Hotkey Dispatcher:** Dedicated Win32 message-only thread (`HWND_MESSAGE`) enables zero-latency global shortcuts (`Ctrl+Alt+1..5`) without blocking or relying on the GUI thread.
 * 🪟 **System Tray Quick-Switch & 1-Click `.exe` Launch:** Runs cleanly in the background with a system tray icon, auto-minimizaton, and single-file portable release distribution (`publish/WorkspaceSwitcher.UI.exe`).
 * 🚀 **Auto-Launch Missing Apps:** Optionally launches closed applications using their saved disk executable paths during layout restoration.
@@ -75,6 +78,7 @@ graph TD
         MS[MonitorService - EnumDisplayMonitors]
         PS[ProfileService - JSON Atomic I/O]
         SS[SettingsService - App Config]
+        TBS[TaskbarService - Taskband & Shortcuts]
     end
 
     subgraph Engine ["Low-Level Engine"]
@@ -82,10 +86,11 @@ graph TD
         HM[HotkeyManager - HWND_MESSAGE Loop]
     end
 
-    subgraph Native ["Windows OS P/Invoke Layer"]
+    subgraph Native ["Windows OS P/Invoke & COM Layer"]
         U32[user32.dll: EnumWindows, GetWindowPlacement, RegisterHotKey]
         DWM[dwmapi.dll: DwmGetWindowAttribute CLOAKED]
         K32[kernel32.dll: QueryFullProcessImageName]
+        COM[IShellLinkW / IPersistFile / Taskband HKCU Registry]
     end
 
     MW --> VM
@@ -97,10 +102,13 @@ graph TD
     VM --> MS
     VM --> WM
     VM --> HM
+    VM --> TBS
     PS --> WM
+    WM --> TBS
     WM --> U32
     WM --> DWM
     WM --> K32
+    TBS --> COM
     HM --> U32
 ```
 
@@ -207,6 +215,20 @@ To prevent corrupt profile files in case of sudden power interruptions or crashe
 
 ---
 
+### 6. Dynamic Windows Taskbar Switching & Static Pins
+Windows 10 and 11 store pinned taskbar apps in a dual layer:
+1. **Physical Shortcut Files (`.lnk`):** Stored in `%APPDATA%\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar`.
+2. **Taskband Registry Stream:** Stored in `HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Taskband` under binary values `Favorites` (PIDL stream) and `FavoritesResolve` (concatenated ShellLink structures).
+
+Simply modifying the shortcuts folder is ignored by Windows because Windows Explorer validates the layout against the cached registry stream upon startup.
+
+`TaskbarService` solves this via a robust, native COM and Win32 orchestration:
+* **Snapshotting:** Reads all `.lnk` files in the user pinned taskbar folder, resolves targets and parameters via `IShellLinkW` / `IPersistFile`, encodes raw bytes as Base64 (ensuring full fidelity portability), reads the `Taskband` binary registry values, and tags any items configured as `Static`.
+* **Static Pins Preservation:** Pins flagged as `📌 Static` (configured by the user in the UI) are maintained across all profiles. When switching layouts, `TaskbarService` ensures static shortcuts are preserved while non-static obsolete shortcuts are cleaned up.
+* **Restoration:** Restores the exact `.lnk` files, writes the binary PIDL and ShellLink streams into `HKCU\...\Taskband`, and cleanly signals Windows Explorer to reload without spawning unwanted folder windows.
+
+---
+
 ## 📁 JSON Profile Schema
 
 Profiles are stored in `%APPDATA%\WorkspaceSwitcher\Profiles\<ProfileName>.json`:
@@ -234,7 +256,41 @@ Profiles are stored in `%APPDATA%\WorkspaceSwitcher\Profiles\<ProfileName>.json`
       },
       "bounds": { "left": 0, "top": 0, "right": 1920, "bottom": 1080 }
     }
-  ]
+  ],
+  "taskbar": {
+    "enabled": true,
+    "favorites": "AKQBAAA6AB+AyCc0HxBcEEKq...",
+    "favoritesResolve": "MwMAAEwAAAABFAIAAAAA...",
+    "favoritesVersion": 3,
+    "favoritesChanges": 17,
+    "pinnedItems": [
+      {
+        "shortcutFileName": "File Explorer.lnk",
+        "displayName": "File Explorer",
+        "targetPath": "C:\\Windows\\explorer.exe",
+        "arguments": "",
+        "base64Data": "TAAAAAEUAgAAAAAAwAA...",
+        "isStatic": true
+      },
+      {
+        "shortcutFileName": "Firefox.lnk",
+        "displayName": "Firefox",
+        "targetPath": "C:\\Program Files\\Mozilla Firefox\\firefox.exe",
+        "arguments": "",
+        "base64Data": "TAAAAAEUAgAAAAAAwAA...",
+        "isStatic": true
+      },
+      {
+        "shortcutFileName": "Visual Studio Code.lnk",
+        "displayName": "Visual Studio Code",
+        "targetPath": "C:\\Users\\User\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe",
+        "arguments": "",
+        "base64Data": "TAAAAAEUAgAAAAAAwAA...",
+        "isStatic": false
+      }
+    ],
+    "capturedAt": "2026-09-02T15:00:53Z"
+  }
 }
 ```
 

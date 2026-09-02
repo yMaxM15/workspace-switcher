@@ -53,8 +53,16 @@ public class WindowManager
     /// <summary>
     /// Captures a snapshot of all currently active and visible application windows.
     /// Excludes the switcher application itself, desktop shells, and background services.
+    /// Optionally captures the Windows taskbar pinned items layout.
     /// </summary>
-    public WorkspaceProfile CaptureWorkspace(string profileName, string? description = null, string? iconGlyph = null, string? hotkeyModifier = null, string? hotkeyKey = null)
+    public WorkspaceProfile CaptureWorkspace(
+        string profileName, 
+        string? description = null, 
+        string? iconGlyph = null, 
+        string? hotkeyModifier = null, 
+        string? hotkeyKey = null,
+        bool captureTaskbar = true,
+        IEnumerable<string>? staticAppIdentifiers = null)
     {
         var profile = new WorkspaceProfile(profileName)
         {
@@ -64,6 +72,16 @@ public class WindowManager
             HotkeyKey = hotkeyKey,
             Windows = new List<WindowInfo>()
         };
+
+        if (captureTaskbar)
+        {
+            try
+            {
+                var taskbarService = new Services.TaskbarService();
+                profile.Taskbar = taskbarService.CaptureCurrentTaskbar(staticAppIdentifiers);
+            }
+            catch { }
+        }
 
         var shellHwnd = NativeMethods.GetShellWindow();
         int currentPid = Environment.ProcessId;
@@ -104,9 +122,28 @@ public class WindowManager
         WorkspaceProfile profile, 
         bool launchIfNotRunning = false,
         WorkspaceProfile? previousProfile = null,
-        bool closeAppsOnSwitch = false)
+        bool closeAppsOnSwitch = false,
+        bool switchTaskbarPins = false,
+        IEnumerable<string>? staticAppIdentifiers = null)
     {
-        if (profile == null || profile.Windows == null || profile.Windows.Count == 0)
+        if (profile == null)
+        {
+            return (0, 0);
+        }
+
+        // Apply taskbar pinned applications if enabled for this switch
+        if (switchTaskbarPins && profile.Taskbar != null && profile.Taskbar.Enabled)
+        {
+            try
+            {
+                var taskbarService = new Services.TaskbarService();
+                taskbarService.ApplyTaskbar(profile.Taskbar, staticAppIdentifiers);
+                System.Threading.Thread.Sleep(300);
+            }
+            catch { }
+        }
+
+        if (profile.Windows == null || profile.Windows.Count == 0)
         {
             return (0, 0);
         }

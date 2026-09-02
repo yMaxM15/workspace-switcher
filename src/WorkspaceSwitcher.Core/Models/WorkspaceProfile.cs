@@ -14,6 +14,7 @@ public class WorkspaceProfile
     public DateTime LastModifiedAt { get; set; } = DateTime.UtcNow;
     public int DisplayCount { get; set; } = 1;
     public List<WindowInfo> Windows { get; set; } = new();
+    public TaskbarConfiguration? Taskbar { get; set; }
 
     public WorkspaceProfile() { }
 

@@ -11,5 +11,7 @@ public class AppSettings
     public string? LastActiveProfileName { get; set; }
     public bool StartWithWindows { get; set; } = false;
     public string? CustomProfilesDirectory { get; set; }
+    public bool SwitchTaskbarPins { get; set; } = true;
+    public List<string> StaticPinnedApps { get; set; } = new();
     public List<HotKeyBinding> Hotkeys { get; set; } = new();
 }

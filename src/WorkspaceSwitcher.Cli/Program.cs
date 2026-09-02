@@ -12,6 +12,37 @@ Console.WriteLine("=================================================");
 var windowManager = new WindowManager();
 var profileService = new ProfileService();
 var settingsService = new SettingsService();
+var taskbarService = new TaskbarService();
+
+if (args.Length > 0 && args[0] == "apply-taskbar")
+{
+    string profileName = args.Length > 1 ? args[1] : "Coding";
+    Console.WriteLine($"[TEST] Applying taskbar for profile: {profileName}");
+    var prof = profileService.LoadProfile(profileName);
+    if (prof?.Taskbar == null)
+    {
+        Console.WriteLine("[ERROR] Profile has no taskbar configuration!");
+        return;
+    }
+
+    bool success = taskbarService.ApplyTaskbar(prof.Taskbar);
+    Console.WriteLine($"[RESULT] ApplyTaskbar returned: {success}");
+    return;
+}
+
+if (args.Length > 0 && args[0] == "snapshot-taskbar")
+{
+    string profileName = args.Length > 1 ? args[1] : "test";
+    Console.WriteLine($"[SNAPSHOT] Capturing taskbar for profile: {profileName}");
+    var prof = profileService.LoadProfile(profileName);
+    if (prof != null)
+    {
+        prof.Taskbar = taskbarService.CaptureCurrentTaskbar();
+        profileService.SaveProfile(prof);
+        Console.WriteLine($"[SNAPSHOT] Saved {prof.Taskbar.PinnedItems.Count} taskbar pin(s) to '{prof.Name}'.");
+    }
+    return;
+}
 
 Console.WriteLine($"\n[INFO] Profiles Directory: {profileService.ProfilesDirectory}");
 
@@ -19,14 +50,23 @@ Console.WriteLine($"\n[INFO] Profiles Directory: {profileService.ProfilesDirecto
 Console.WriteLine("\n[1] Capturing snapshot 'Coding' profile...");
 var codingProfile = windowManager.CaptureWorkspace("Coding", "Dual monitor development setup");
 profileService.SaveProfile(codingProfile);
-Console.WriteLine($"Saved '{codingProfile.Name}' with {codingProfile.Windows.Count} windows to JSON.");
+int pinCount = codingProfile.Taskbar?.PinnedItems.Count ?? 0;
+Console.WriteLine($"Saved '{codingProfile.Name}' with {codingProfile.Windows.Count} windows and {pinCount} taskbar pins to JSON.");
+if (codingProfile.Taskbar?.PinnedItems != null)
+{
+    foreach (var item in codingProfile.Taskbar.PinnedItems)
+    {
+        Console.WriteLine($"   📌 {item.DisplayName} (File: {item.ShortcutFileName}, Static: {item.IsStatic})");
+    }
+}
 
 // 2. List all profiles
 Console.WriteLine("\n[2] Existing profiles on disk:");
 var profiles = profileService.GetAllProfiles();
 foreach (var p in profiles)
 {
-    Console.WriteLine($" • [{p.Name}] - {p.Windows.Count} windows (Created: {p.CreatedAt:yyyy-MM-dd HH:mm:ss})");
+    int pPins = p.Taskbar?.PinnedItems.Count ?? 0;
+    Console.WriteLine($" • [{p.Name}] - {p.Windows.Count} windows, {pPins} taskbar pins (Created: {p.CreatedAt:yyyy-MM-dd HH:mm:ss})");
 }
 
 // 3. Setup Global Hotkey Demo

@@ -96,6 +96,21 @@
                     <ComboBox x:Name="ModifierComboBox" Grid.Column="0" Style="{StaticResource DarkGlassComboBox}"/>
                     <ComboBox x:Name="KeyComboBox" Grid.Column="2" Style="{StaticResource DarkGlassComboBox}"/>
                 </Grid>
+
+                <!-- Taskbar Pinning Option -->
+                <Border x:Name="TaskbarOptionBorder" Background="#161D36" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,16">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">
+                            <TextBlock Text="📌 Capture Taskbar Pinned Apps" FontSize="11.5" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Text="Saves current taskbar shortcuts (e.g. games vs work tools) with this workspace." FontSize="10" Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <CheckBox x:Name="CaptureTaskbarCheckBox" Grid.Column="1" Style="{StaticResource ModernToggleSwitch}" IsChecked="True" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
             </StackPanel>
 
             <!-- Bottom Buttons -->
